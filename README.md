@@ -64,7 +64,7 @@ El token de reset se imprime en consola — conectar con nodemailer/Resend en pr
 
 ### GET /api/auth/me
 ```
-Authorization: Bearer eyJ...
+Authorization: Bearer eyJ..
 ```
 
 ## Para producción
