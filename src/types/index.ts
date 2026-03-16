@@ -20,7 +20,6 @@ export interface User {
   // Reset de contraseña
   resetToken: string | null;
   resetTokenExpiresAt: Date | null;
-  puto: string;
 }
 
 // ─────────────────────────────────────────────────────────────
