@@ -3,7 +3,10 @@ import { hashPassword } from './utils/password.utils';
 
 export const seedDatabase = async (): Promise<void> => {
   const testEmail = 'juan@company.com';
+  const testCandidate = 'juan@candidate.com';
+
   const testEmail2 = 'jmanuel@company.com';
+  const testCandidate2 = 'jmanuel@candidate.com';
 
   if (findByEmail(testEmail)) return;
 
@@ -18,10 +21,22 @@ export const seedDatabase = async (): Promise<void> => {
     role: 'company',
   });
   createUser({
+    fullName: 'Juanchi',
+    email: testCandidate,
+    passwordHash,
+    role: 'candidate',
+  });
+  createUser({
     fullName: 'Jesus Manuel Martinez',
     email: testEmail2,
     passwordHash,
     role: 'company'
+  })
+  createUser({
+    fullName: 'Jesus Manuel Martinez',
+    email: testCandidate2,
+    passwordHash,
+    role: 'candidate'
   })
 
   console.log(`
