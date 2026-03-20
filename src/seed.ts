@@ -2,8 +2,8 @@ import { findByEmail, createUser } from './models/user.model';
 import { hashPassword } from './utils/password.utils';
 
 export const seedDatabase = async (): Promise<void> => {
-  const testEmail = 'juan@test.com';
-  const testEmail2 = 'jmanuel@test.com';
+  const testEmail = 'juan@company.com';
+  const testEmail2 = 'jmanuel@company.com';
 
   if (findByEmail(testEmail)) return;
 
