@@ -3,7 +3,6 @@ import { z } from 'zod';
 import * as authService from '@/lib/services/auth.service';
 import { registerSchema, formatZodErrors } from '@/lib/validations/auth.validations';
 import { registerLimiter } from '@/lib/utils/rate-limiter';
-import { seedDatabase } from '@/lib/seed';
 import {
   created,
   badRequest,
@@ -18,7 +17,6 @@ import {
 // ─────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
-  await seedDatabase();
 
   // Rate limit
   const ip = req.headers.get('x-forwarded-for') ?? req.headers.get('x-real-ip') ?? 'unknown';

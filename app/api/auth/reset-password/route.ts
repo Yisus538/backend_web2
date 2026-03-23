@@ -2,7 +2,6 @@ import { NextRequest } from 'next/server';
 import * as authService from '@/lib/services/auth.service';
 import { resetPasswordSchema, formatZodErrors } from '@/lib/validations/auth.validations';
 import { badRequest, ok, serverError } from '@/lib/utils/api-response';
-import { seedDatabase } from '@/lib/seed';
 
 // ─────────────────────────────────────────────────────────────
 // POST /api/auth/reset-password
@@ -10,7 +9,6 @@ import { seedDatabase } from '@/lib/seed';
 // ─────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
-  await seedDatabase();
 
   let body: unknown;
   try {

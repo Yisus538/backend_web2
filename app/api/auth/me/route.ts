@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { getAuthUser } from '@/lib/utils/auth.utils';
 import { ok, unauthorized } from '@/lib/utils/api-response';
-import { seedDatabase } from '@/lib/seed';
+
 
 // ─────────────────────────────────────────────────────────────
 // GET /api/auth/me
@@ -9,7 +9,7 @@ import { seedDatabase } from '@/lib/seed';
 // ─────────────────────────────────────────────────────────────
 
 export async function GET(req: NextRequest) {
-  await seedDatabase();
+
 
   const { user, error } = getAuthUser(req);
 

@@ -3,7 +3,7 @@ import * as authService from '@/lib/services/auth.service';
 import { forgotPasswordSchema, formatZodErrors } from '@/lib/validations/auth.validations';
 import { forgotPasswordLimiter } from '@/lib/utils/rate-limiter';
 import { badRequest, ok, tooManyRequests } from '@/lib/utils/api-response';
-import { seedDatabase } from '@/lib/seed';
+
 
 // ─────────────────────────────────────────────────────────────
 // POST /api/auth/forgot-password
@@ -11,7 +11,7 @@ import { seedDatabase } from '@/lib/seed';
 // ─────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
-  await seedDatabase();
+
 
   // Rate limit
   const ip = req.headers.get('x-forwarded-for') ?? req.headers.get('x-real-ip') ?? 'unknown';

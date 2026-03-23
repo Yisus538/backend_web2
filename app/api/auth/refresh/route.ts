@@ -1,15 +1,12 @@
 import { NextRequest } from 'next/server';
 import * as authService from '@/lib/services/auth.service';
 import { badRequest, ok, unauthorized } from '@/lib/utils/api-response';
-import { seedDatabase } from '@/lib/seed';
 
 // ─────────────────────────────────────────────────────────────
 // POST /api/auth/refresh
 // ─────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
-  await seedDatabase();
-
   let body: { refreshToken?: string };
   try {
     body = await req.json();
@@ -22,7 +19,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const tokens = authService.refreshTokens(body.refreshToken);
+    const tokens = await authService.refreshTokens(body.refreshToken);
     return ok('Tokens renovados', { tokens });
   } catch {
     return unauthorized('Refresh token inválido o expirado');

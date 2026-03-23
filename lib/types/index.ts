@@ -16,7 +16,10 @@ export interface User {
   updatedAt: Date;
   failedLoginAttempts: number;
   lockedUntil: Date | null;
+  isEmailVerified: boolean;
   isActive: boolean;
+  verificationToken: string | null;
+  verificationTokenExpiresAt: Date | null;
   // Reset de contraseña
   resetToken: string | null;
   resetTokenExpiresAt: Date | null;
@@ -29,6 +32,7 @@ export interface UserPublic {
   id: string;
   fullName: string;
   email: string;
+  isEmailVerified: boolean;
   role: UserRole;
   createdAt: Date;
 }

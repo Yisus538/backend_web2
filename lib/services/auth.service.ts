@@ -2,7 +2,7 @@ import * as UserModel from '../models/user.model';
 import { hashPassword, comparePassword, validatePasswordStrength } from '../utils/password.utils';
 import { generateTokens, verifyRefreshToken } from '../utils/jwt.utils';
 import { generateResetToken, getResetTokenExpiry, isResetTokenValid } from '../utils/token.utils';
-import { sendPasswordResetEmail } from './email.service';
+import { sendPasswordResetEmail, sendVerificationEmail } from './email.service';
 import { config } from '../config';
 import {
   RegisterDTO,
@@ -11,19 +11,24 @@ import {
   ResetPasswordDTO,
   AuthTokens,
   UserPublic,
+  UserRole
 } from '../types';
 
 // ─────────────────────────────────────────────────────────────
 // Helpers internos
 // ─────────────────────────────────────────────────────────────
 
-const toPublicUser = (user: ReturnType<typeof UserModel.findById>): UserPublic => {
+// Obtenemos el tipo real del usuario resolviendo la Promesa de Prisma
+type PrismaUser = NonNullable<Awaited<ReturnType<typeof UserModel.findById>>>;
+
+const toPublicUser = (user: PrismaUser): UserPublic => {
   if (!user) throw new Error('USER_NOT_FOUND');
   return {
     id: user.id,
     fullName: user.fullName,
     email: user.email,
-    role: user.role,
+    role: user.role as UserRole,
+    isEmailVerified: user.isEmailVerified,
     createdAt: user.createdAt,
   };
 };
@@ -37,7 +42,8 @@ export const register = async (dto: RegisterDTO): Promise<UserPublic> => {
     throw new Error('PASSWORDS_DONT_MATCH');
   }
 
-  if (UserModel.findByEmail(dto.email)) {
+  const existingUser = await UserModel.findByEmail(dto.email);
+  if (existingUser) {
     throw new Error('EMAIL_TAKEN');
   }
 
@@ -46,12 +52,22 @@ export const register = async (dto: RegisterDTO): Promise<UserPublic> => {
 
   const passwordHash = await hashPassword(dto.password);
 
-  const user = UserModel.createUser({
+  const user = await UserModel.createUser({
     fullName: dto.fullName,
     email: dto.email,
     passwordHash,
     role: dto.role,
   });
+
+  // Generar token de verificación (24hs)
+  const verificationToken = generateResetToken();
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  await UserModel.saveVerificationToken(user.id, verificationToken, expiresAt);
+
+  // Mandar mail (no bloqueamos si falla)
+  sendVerificationEmail(user.email, user.fullName, verificationToken).catch(
+    (err) => console.error('[email] Error enviando verificación:', err),
+  );
 
   return toPublicUser(user);
 };
@@ -63,7 +79,7 @@ export const register = async (dto: RegisterDTO): Promise<UserPublic> => {
 export const login = async (
   dto: LoginDTO,
 ): Promise<{ user: UserPublic; tokens: AuthTokens }> => {
-  const user = UserModel.findByEmail(dto.email);
+  const user = await UserModel.findByEmail(dto.email);
 
   // Respuesta genérica: no revelar si el email existe o no
   if (!user) throw new Error('INVALID_CREDENTIALS');
@@ -79,13 +95,13 @@ export const login = async (
 
   if (!isValid) {
     const attempts = user.failedLoginAttempts + 1;
-    UserModel.updateFailedAttempts(user.id, attempts);
+    await UserModel.updateFailedAttempts(user.id, attempts);
 
     if (attempts >= config.account.maxFailedAttempts) {
       const lockUntil = new Date(
         Date.now() + config.account.lockDurationMinutes * 60 * 1000,
       );
-      UserModel.lockAccount(user.id, lockUntil);
+      await UserModel.lockAccount(user.id, lockUntil);
       throw new Error(`ACCOUNT_LOCKED:${config.account.lockDurationMinutes}`);
     }
 
@@ -94,9 +110,9 @@ export const login = async (
     );
   }
 
-  UserModel.resetFailedAttempts(user.id);
+  await UserModel.resetFailedAttempts(user.id);
 
-  const tokens = generateTokens({ userId: user.id, email: user.email, role: user.role });
+  const tokens = generateTokens({ userId: user.id, email: user.email, role: user.role as UserRole });
 
   return { user: toPublicUser(user), tokens };
 };
@@ -105,12 +121,12 @@ export const login = async (
 // Refresh tokens
 // ─────────────────────────────────────────────────────────────
 
-export const refreshTokens = (refreshToken: string): AuthTokens => {
+export const refreshTokens = async (refreshToken: string): Promise<AuthTokens> => {
   try {
     const payload = verifyRefreshToken(refreshToken);
-    const user = UserModel.findById(payload.userId);
+    const user = await UserModel.findById(payload.userId);
     if (!user || !user.isActive) throw new Error();
-    return generateTokens({ userId: user.id, email: user.email, role: user.role });
+    return generateTokens({ userId: user.id, email: user.email, role: user.role as UserRole });
   } catch {
     throw new Error('INVALID_REFRESH_TOKEN');
   }
@@ -121,7 +137,7 @@ export const refreshTokens = (refreshToken: string): AuthTokens => {
 // ─────────────────────────────────────────────────────────────
 
 export const forgotPassword = async (dto: ForgotPasswordDTO): Promise<void> => {
-  const user = UserModel.findByEmail(dto.email);
+  const user = await UserModel.findByEmail(dto.email);
 
   // Siempre responder con éxito para no revelar si el email existe
   if (!user || !user.isActive) return;
@@ -129,7 +145,7 @@ export const forgotPassword = async (dto: ForgotPasswordDTO): Promise<void> => {
   const resetToken = generateResetToken();
   const expiresAt = getResetTokenExpiry();
 
-  UserModel.saveResetToken(user.id, resetToken, expiresAt);
+  await UserModel.saveResetToken(user.id, resetToken, expiresAt);
   await sendPasswordResetEmail(user.email, resetToken);
 };
 
@@ -142,7 +158,7 @@ export const resetPassword = async (dto: ResetPasswordDTO): Promise<void> => {
     throw new Error('PASSWORDS_DONT_MATCH');
   }
 
-  const user = UserModel.findByResetToken(dto.token);
+  const user = await UserModel.findByResetToken(dto.token);
   if (!user) throw new Error('INVALID_RESET_TOKEN');
 
   if (!isResetTokenValid(user.resetTokenExpiresAt)) {
@@ -153,5 +169,5 @@ export const resetPassword = async (dto: ResetPasswordDTO): Promise<void> => {
   if (!valid) throw new Error(`PASSWORD_WEAK:${errors.join('|')}`);
 
   const passwordHash = await hashPassword(dto.newPassword);
-  UserModel.updatePassword(user.id, passwordHash);
+  await UserModel.updatePassword(user.id, passwordHash);
 };

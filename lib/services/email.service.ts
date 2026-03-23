@@ -1,30 +1,66 @@
+import { Resend } from 'resend';
 import { config } from '../config';
 
-// ─────────────────────────────────────────────────────────────
-// Servicio de email simulado
-// Para producción: reemplazar el console.log con nodemailer,
-// Resend, SendGrid, AWS SES, etc.
-// ─────────────────────────────────────────────────────────────
+const resend = new Resend(process.env.RESEND_API_KEY);
+const FROM = process.env.RESEND_FROM || 'onboarding@resend.dev';
+
+export const sendVerificationEmail = async (
+  email: string,
+  fullName: string,
+  token: string,
+): Promise<void> => {
+  const verifyUrl = `${config.frontendUrl}/index.html?token=${token}#/verify-email`;
+
+  await resend.emails.send({
+    from: FROM,
+    to: email,
+    subject: 'Verificá tu cuenta — RecruitPro',
+    html: `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px;">
+        <h2 style="color:#1a405b;">Hola, ${fullName}!</h2>
+        <p>Gracias por registrarte en <strong>RecruitPro</strong>.</p>
+        <p>Hacé clic en el botón para verificar tu cuenta:</p>
+        <a href="${verifyUrl}"
+           style="display:inline-block;background:#1a405b;color:#fff;padding:12px 24px;
+                  border-radius:8px;text-decoration:none;font-weight:600;margin:16px 0;">
+          Verificar cuenta
+        </a>
+        <p style="color:#888;font-size:13px;">
+          Este enlace expira en 24 horas.<br>
+          Si no creaste esta cuenta, ignorá este mail.
+        </p>
+        <p style="color:#888;font-size:12px;">
+          O copiá este link: ${verifyUrl}
+        </p>
+      </div>
+    `,
+  });
+};
 
 export const sendPasswordResetEmail = async (
   email: string,
   resetToken: string,
 ): Promise<void> => {
-  const resetUrl = `${config.frontendUrl}/reset-password?token=${resetToken}`;
+  const resetUrl = `${config.frontendUrl}/index.html?token=${resetToken}#/reset-password`;
 
-  // TODO: reemplazar con tu proveedor de email real
-  console.log(`
-  ─────────────────────────────────────────
-  📧 EMAIL DE RESET DE CONTRASEÑA
-  ─────────────────────────────────────────
-  Para: ${email}
-  Asunto: Restablecer contraseña - RecruitPro
-
-  Hacé clic en el siguiente enlace para restablecer tu contraseña:
-  ${resetUrl}
-
-  Este enlace expira en ${config.resetToken.expiresMinutes} minutos.
-  Si no solicitaste esto, ignorá este email.
-  ─────────────────────────────────────────
-  `);
+  await resend.emails.send({
+    from: FROM,
+    to: email,
+    subject: 'Restablecer contraseña — RecruitPro',
+    html: `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px;">
+        <h2 style="color:#1a405b;">Restablecer contraseña</h2>
+        <p>Recibimos una solicitud para restablecer tu contraseña.</p>
+        <a href="${resetUrl}"
+           style="display:inline-block;background:#1a405b;color:#fff;padding:12px 24px;
+                  border-radius:8px;text-decoration:none;font-weight:600;margin:16px 0;">
+          Restablecer contraseña
+        </a>
+        <p style="color:#888;font-size:13px;">
+          Este enlace expira en ${config.resetToken.expiresMinutes} minutos.<br>
+          Si no solicitaste esto, ignorá este mail.
+        </p>
+      </div>
+    `,
+  });
 };

@@ -1,82 +1,94 @@
-import { v4 as uuidv4 } from 'uuid';
-import { User, UserRole } from '../types';
+import { PrismaClient } from '@prisma/client';
+import { PrismaNeon } from '@prisma/adapter-neon';
+import { UserRole } from '../types';
 
-// Base de datos en memoria (singleton global en Next.js)
-// En producción: reemplazar con Prisma + PostgreSQL o similar
-const db = new Map<string, User>();
+// 1. Ya no necesitamos importar 'Pool', le pasamos la URL directo al adaptador
+const adapter = new PrismaNeon({
+  connectionString: process.env.DATABASE_URL as string
+});
 
-export const findByEmail = (email: string): User | null => {
-  for (const user of db.values()) {
-    if (user.email.toLowerCase() === email.toLowerCase()) return user;
-  }
-  return null;
-};
+const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 
-export const findById = (id: string): User | null =>
-  db.get(id) ?? null;
+// 2. Inicializamos Prisma
+export const prisma =
+  globalForPrisma.prisma ?? 
+  new PrismaClient({ 
+    adapter,
+    log: ['error'] 
+  });
 
-export const findByResetToken = (token: string): User | null => {
-  for (const user of db.values()) {
-    if (user.resetToken === token) return user;
-  }
-  return null;
-};
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+// ─── Queries ─────────────────────────────────────────────────
+
+export const findByEmail = (email: string) =>
+  prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+
+export const findById = (id: string) =>
+  prisma.user.findUnique({ where: { id } });
+
+export const findByResetToken = (token: string) =>
+  prisma.user.findFirst({ where: { resetToken: token } });
+
+export const findByVerificationToken = (token: string) =>
+  prisma.user.findFirst({ where: { verificationToken: token } });
 
 export const createUser = (data: {
   fullName: string;
   email: string;
   passwordHash: string;
   role: UserRole;
-}): User => {
-  const user: User = {
-    id: uuidv4(),
-    fullName: data.fullName,
-    email: data.email.toLowerCase(),
-    passwordHash: data.passwordHash,
-    role: data.role,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    failedLoginAttempts: 0,
-    lockedUntil: null,
-    isActive: true,
-    resetToken: null,
-    resetTokenExpiresAt: null,
-  };
-  db.set(user.id, user);
-  return user;
-};
+}) =>
+  prisma.user.create({
+    data: {
+      fullName: data.fullName,
+      email: data.email.toLowerCase(),
+      passwordHash: data.passwordHash,
+      role: data.role,
+    },
+  });
 
-export const updateFailedAttempts = (id: string, attempts: number): void => {
-  const user = db.get(id);
-  if (user) db.set(id, { ...user, failedLoginAttempts: attempts, updatedAt: new Date() });
-};
+export const saveVerificationToken = (id: string, token: string, expiresAt: Date) =>
+  prisma.user.update({
+    where: { id },
+    data: { verificationToken: token, verificationTokenExpiresAt: expiresAt },
+  });
 
-export const lockAccount = (id: string, until: Date): void => {
-  const user = db.get(id);
-  if (user) db.set(id, { ...user, lockedUntil: until, updatedAt: new Date() });
-};
+export const markEmailVerified = (id: string) =>
+  prisma.user.update({
+    where: { id },
+    data: {
+      isEmailVerified: true,
+      verificationToken: null,
+      verificationTokenExpiresAt: null,
+    },
+  });
 
-export const resetFailedAttempts = (id: string): void => {
-  const user = db.get(id);
-  if (user) db.set(id, { ...user, failedLoginAttempts: 0, lockedUntil: null, updatedAt: new Date() });
-};
+export const updateFailedAttempts = (id: string, attempts: number) =>
+  prisma.user.update({ where: { id }, data: { failedLoginAttempts: attempts } });
 
-export const saveResetToken = (id: string, token: string, expiresAt: Date): void => {
-  const user = db.get(id);
-  if (user) db.set(id, { ...user, resetToken: token, resetTokenExpiresAt: expiresAt, updatedAt: new Date() });
-};
+export const lockAccount = (id: string, until: Date) =>
+  prisma.user.update({ where: { id }, data: { lockedUntil: until } });
 
-export const updatePassword = (id: string, passwordHash: string): void => {
-  const user = db.get(id);
-  if (user) {
-    db.set(id, {
-      ...user,
+export const resetFailedAttempts = (id: string) =>
+  prisma.user.update({
+    where: { id },
+    data: { failedLoginAttempts: 0, lockedUntil: null },
+  });
+
+export const saveResetToken = (id: string, token: string, expiresAt: Date) =>
+  prisma.user.update({
+    where: { id },
+    data: { resetToken: token, resetTokenExpiresAt: expiresAt },
+  });
+
+export const updatePassword = (id: string, passwordHash: string) =>
+  prisma.user.update({
+    where: { id },
+    data: {
       passwordHash,
       resetToken: null,
       resetTokenExpiresAt: null,
       failedLoginAttempts: 0,
       lockedUntil: null,
-      updatedAt: new Date(),
-    });
-  }
-};
+    },
+  });
