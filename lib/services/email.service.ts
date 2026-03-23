@@ -1,8 +1,13 @@
-import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 import { config } from '../config';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-const FROM = process.env.RESEND_FROM || 'onboarding@resend.dev';
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_APP_PASSWORD,
+  },
+});
 
 export const sendVerificationEmail = async (
   email: string,
@@ -11,8 +16,8 @@ export const sendVerificationEmail = async (
 ): Promise<void> => {
   const verifyUrl = `${config.frontendUrl}/index.html?token=${token}#/verify-email`;
 
-  await resend.emails.send({
-    from: FROM,
+  await transporter.sendMail({
+    from: `"RecruitPro" <${process.env.GMAIL_USER}>`,
     to: email,
     subject: 'Verificá tu cuenta — RecruitPro',
     html: `
@@ -43,8 +48,8 @@ export const sendPasswordResetEmail = async (
 ): Promise<void> => {
   const resetUrl = `${config.frontendUrl}/index.html?token=${resetToken}#/reset-password`;
 
-  await resend.emails.send({
-    from: FROM,
+  await transporter.sendMail({
+    from: `"RecruitPro" <${process.env.GMAIL_USER}>`,
     to: email,
     subject: 'Restablecer contraseña — RecruitPro',
     html: `

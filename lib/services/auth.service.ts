@@ -59,7 +59,6 @@ export const register = async (dto: RegisterDTO): Promise<UserPublic> => {
     role: dto.role,
   });
 
-  // Generar token de verificación (24hs)
   const verificationToken = generateResetToken();
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
   await UserModel.saveVerificationToken(user.id, verificationToken, expiresAt);
