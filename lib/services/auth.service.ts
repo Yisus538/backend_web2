@@ -30,6 +30,7 @@ const toPublicUser = (user: PrismaUser): UserPublic => {
     role: user.role as UserRole,
     isEmailVerified: user.isEmailVerified,
     createdAt: user.createdAt,
+    avatarUrl: user.avatarUrl,
   };
 };
 
@@ -137,15 +138,16 @@ export const refreshTokens = async (refreshToken: string): Promise<AuthTokens> =
 
 export const forgotPassword = async (dto: ForgotPasswordDTO): Promise<void> => {
   const user = await UserModel.findByEmail(dto.email);
-
-  // Siempre responder con éxito para no revelar si el email existe
   if (!user || !user.isActive) return;
 
   const resetToken = generateResetToken();
   const expiresAt = getResetTokenExpiry();
 
   await UserModel.saveResetToken(user.id, resetToken, expiresAt);
-  await sendPasswordResetEmail(user.email, resetToken);
+  
+  sendPasswordResetEmail(user.email, resetToken).catch(err =>
+    console.error('[forgotPassword] Error al enviar email:', err)
+  );
 };
 
 // ─────────────────────────────────────────────────────────────

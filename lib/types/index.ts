@@ -33,6 +33,7 @@ export interface UserPublic {
   fullName: string;
   email: string;
   isEmailVerified: boolean;
+  avatarUrl?: string | null;
   role: UserRole;
   createdAt: Date;
 }

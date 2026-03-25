@@ -1,96 +1,62 @@
 import { NextRequest } from 'next/server';
-import { z } from 'zod';
 import { getAuthUser } from '@/lib/utils/auth.utils';
-import { prisma } from '@/lib/models/user.model';
-import { ok, unauthorized, badRequest, serverError } from '@/lib/utils/api-response';
-import { UserPublic, UserRole } from '@/lib/types';
+import { ok, unauthorized, serverError } from '@/lib/utils/api-response';
+import { prisma } from '@/lib/models/user.model'; // IMPORTACIÓN CORREGIDA 🚀
 
 export async function GET(req: NextRequest) {
   const { user, error } = getAuthUser(req);
 
   if (!user) {
-    if (error === 'NO_TOKEN')  return unauthorized('Token no proporcionado');
-    if (error === 'EXPIRED')   return unauthorized('Token expirado');
+    if (error === 'NO_TOKEN') return unauthorized('Token no proporcionado');
+    if (error === 'EXPIRED') return unauthorized('Token expirado');
     return unauthorized('Token inválido');
   }
 
-  return ok('Usuario autenticado', { user });
+  try {
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.userId }, // CORREGIDO: userId en lugar de id 🚀
+      select: { 
+        id: true, fullName: true, email: true, role: true, 
+        avatarUrl: true, telefono: true, ubicacion: true, titulo: true 
+      }
+    });
+
+    if (!dbUser) return unauthorized('Usuario no encontrado');
+
+    return ok('Usuario autenticado', { user: dbUser });
+  } catch (err) {
+    console.error(err);
+    return serverError('Error al obtener los datos');
+  }
 }
-
-// ─────────────────────────────────────────────────────────────
-// PATCH /api/auth/me
-// Actualiza datos del perfil del usuario autenticado
-// ─────────────────────────────────────────────────────────────
-
-const updateProfileSchema = z.object({
-  fullName: z
-    .string()
-    .trim()
-    .min(2, 'Entre 2 y 100 caracteres')
-    .max(100, 'Entre 2 y 100 caracteres')
-    .optional(),
-  email: z
-    .string()
-    .trim()
-    .email('Correo inválido')
-    .toLowerCase()
-    .optional(),
-});
 
 export async function PATCH(req: NextRequest) {
   const { user, error } = getAuthUser(req);
-
-  if (!user) {
-    if (error === 'NO_TOKEN')  return unauthorized('Token no proporcionado');
-    if (error === 'EXPIRED')   return unauthorized('Token expirado');
-    return unauthorized('Token inválido');
-  }
-
-  let body: unknown;
-  try {
-    body = await req.json();
-  } catch {
-    return badRequest('El cuerpo de la solicitud es inválido');
-  }
-
-  const parsed = updateProfileSchema.safeParse(body);
-  if (!parsed.success) {
-    return badRequest('Datos inválidos', parsed.error.errors.map(e => ({
-      field: e.path.join('.') || 'unknown',
-      message: e.message,
-    })));
-  }
-
-  if (!parsed.data.fullName && !parsed.data.email) {
-    return badRequest('Debés enviar al menos un campo para actualizar');
-  }
+  if (!user) return unauthorized('No autorizado');
 
   try {
-    const updated = await prisma.user.update({
-      where: { id: user.userId },
+    const body = await req.json();
+    const { fullName, telefono, ubicacion, titulo, avatarUrl } = body;
+
+    const updatedUser = await prisma.user.update({
+      where: { id: user.userId }, // CORREGIDO: userId en lugar de id 🚀
       data: {
-        ...(parsed.data.fullName && { fullName: parsed.data.fullName }),
-        ...(parsed.data.email    && { email: parsed.data.email }),
+        ...(fullName && { fullName }),
+        ...(telefono !== undefined && { telefono }),
+        ...(ubicacion !== undefined && { ubicacion }),
+        ...(titulo !== undefined && { titulo }),
+        ...(avatarUrl !== undefined && { avatarUrl }),
       },
+      select: { 
+        id: true, fullName: true, email: true, role: true, 
+        avatarUrl: true, telefono: true, ubicacion: true, titulo: true 
+      }
     });
 
-    const publicUser: UserPublic = {
-      id: updated.id,
-      fullName: updated.fullName,
-      email: updated.email,
-      role: updated.role as UserRole,
-      isEmailVerified: updated.isEmailVerified,
-      createdAt: updated.createdAt,
-    };
-
-    return ok('Perfil actualizado correctamente', { user: publicUser });
-  } catch (err: unknown) {
-    const e = err as { code?: string };
-    if (e?.code === 'P2002') {
-      return badRequest('El correo electrónico ya está en uso');
-    }
-    console.error('[PATCH /api/auth/me]', err);
-    return serverError();
+    return ok('Perfil actualizado', { user: updatedUser });
+  } catch (err) {
+    console.error(err);
+    return serverError('Error al guardar en la base de datos');
   }
 }
 

@@ -197,7 +197,7 @@ const env = (key, fallback)=>{
 const config = {
     port: parseInt(process.env.PORT || '3000', 10),
     nodeEnv: ("TURBOPACK compile-time value", "development") || 'development',
-    frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5500',
+    frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
     jwt: {
         secret: env('JWT_SECRET', 'dev_secret_change_in_production_min32chars'),
         expiresIn: process.env.JWT_EXPIRES_IN || '1h',
@@ -434,7 +434,7 @@ const transporter = __TURBOPACK__imported__module__$5b$project$5d2f$node_modules
     }
 });
 const sendVerificationEmail = async (email, fullName, token)=>{
-    const verifyUrl = `${__TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$config$2f$index$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["config"].frontendUrl}/index.html?token=${token}#/verify-email`;
+    const verifyUrl = `${__TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$config$2f$index$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["config"].frontendUrl}/index.html#/verify-email?token=${token}`;
     await transporter.sendMail({
         from: `"RecruitPro" <${process.env.GMAIL_USER}>`,
         to: email,
@@ -461,7 +461,7 @@ const sendVerificationEmail = async (email, fullName, token)=>{
     });
 };
 const sendPasswordResetEmail = async (email, resetToken)=>{
-    const resetUrl = `${__TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$config$2f$index$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["config"].frontendUrl}/index.html?token=${resetToken}#/reset-password`;
+    const resetUrl = `${__TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$config$2f$index$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["config"].frontendUrl}/index.html#/reset-password?token=${resetToken}`;
     await transporter.sendMail({
         from: `"RecruitPro" <${process.env.GMAIL_USER}>`,
         to: email,
@@ -519,7 +519,8 @@ const toPublicUser = (user)=>{
         email: user.email,
         role: user.role,
         isEmailVerified: user.isEmailVerified,
-        createdAt: user.createdAt
+        createdAt: user.createdAt,
+        avatarUrl: user.avatarUrl
     };
 };
 const register = async (dto)=>{
@@ -594,12 +595,11 @@ const refreshTokens = async (refreshToken)=>{
 };
 const forgotPassword = async (dto)=>{
     const user = await __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$models$2f$user$2e$model$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["findByEmail"](dto.email);
-    // Siempre responder con éxito para no revelar si el email existe
     if (!user || !user.isActive) return;
     const resetToken = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$utils$2f$token$2e$utils$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["generateResetToken"])();
     const expiresAt = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$utils$2f$token$2e$utils$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["getResetTokenExpiry"])();
     await __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$models$2f$user$2e$model$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["saveResetToken"](user.id, resetToken, expiresAt);
-    await (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$services$2f$email$2e$service$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["sendPasswordResetEmail"])(user.email, resetToken);
+    (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$services$2f$email$2e$service$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["sendPasswordResetEmail"])(user.email, resetToken).catch((err)=>console.error('[forgotPassword] Error al enviar email:', err));
 };
 const resetPassword = async (dto)=>{
     if (dto.newPassword !== dto.confirmPassword) {
