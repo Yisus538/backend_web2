@@ -24,7 +24,7 @@ model User {
   resetTokenExpiresAt        DateTime?
   
   // NUEVOS CAMPOS PARA EL PERFIL
-  avatarUrl                  String?
+  avatarUrl                  String?   @db.Text
   telefono                   String?
   ubicacion                  String?
   titulo                     String?
