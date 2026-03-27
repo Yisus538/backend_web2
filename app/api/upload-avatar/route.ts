@@ -19,28 +19,30 @@ export async function POST(req: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-
-    const avatarsDir = path.join(process.cwd(), 'public', 'avatars');
+   const avatarsDir = path.join('/tmp', 'avatars');
     try {
       await fs.access(avatarsDir);
     } catch {
       await fs.mkdir(avatarsDir, { recursive: true });
     }
 
-
     const filename = `${user.userId}-${Date.now()}.webp`;
     const filepath = path.join(avatarsDir, filename);
 
-    // Convertimos a WebP y recortamos a 500x500
     await sharp(buffer)
       .resize(500, 500, { fit: 'cover' })
       .webp({ quality: 80 })
       .toFile(filepath);
 
+    // La URL devuelta necesita ser servida — en producción reemplazar con URL de storage externo
     return NextResponse.json({ success: true, url: `/avatars/${filename}` });
 
   } catch (error) {
     console.error('Error procesando imagen:', error);
     return NextResponse.json({ message: 'Error en el servidor al procesar la imagen' }, { status: 500 });
   }
+}
+
+export async function OPTIONS() {
+  return new Response(null, { status: 204 });
 }
