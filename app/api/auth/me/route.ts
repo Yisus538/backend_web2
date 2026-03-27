@@ -17,7 +17,8 @@ export async function GET(req: NextRequest) {
       where: { id: user.userId }, // CORREGIDO: userId en lugar de id 🚀
       select: { 
         id: true, fullName: true, email: true, role: true, 
-        avatarUrl: true, telefono: true, ubicacion: true, titulo: true 
+        avatarUrl: true, telefono: true, ubicacion: true, titulo: true,
+        isEmailVerified: true
       }
     });
 
@@ -57,7 +58,7 @@ export async function PATCH(req: NextRequest) {
         ...(telefono !== undefined && { telefono }),
         ...(ubicacion !== undefined && { ubicacion }),
         ...(titulo !== undefined && { titulo }),
-        ...(avatarUrl !== undefined && { avatarUrl: avatarUrl || null }), // Permite null
+        ...(avatarUrl !== undefined && { avatarUrl: avatarUrl || null }), 
       },
       select: { 
         id: true, 

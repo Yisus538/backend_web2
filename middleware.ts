@@ -2,12 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 
 // Aquí están todos tus puertos (Live Server, Next.js frontend, Vite, etc.)
 const allowedOrigins = [
-  'http://localhost:5500',
-  'http://127.0.0.1:5500',
   'http://localhost:3000',
+  'http://127.0.0.1:3000',
   'http://localhost:5173',
-  process.env.FRONTEND_URL!,
-].filter(Boolean);
+  'http://127.0.0.1:5173',
+  'https://frontendweb2-production.up.railway.app'
+];
 
 export function middleware(req: NextRequest) {
   // Obtenemos el origen de la petición
