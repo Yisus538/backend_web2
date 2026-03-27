@@ -262,12 +262,14 @@ __turbopack_context__.s([
 ]);
 var __TURBOPACK__imported__module__$5b$externals$5d2f40$prisma$2f$client__$5b$external$5d$__$2840$prisma$2f$client$2c$__cjs$2c$__$5b$project$5d2f$node_modules$2f40$prisma$2f$client$29$__ = __turbopack_context__.i("[externals]/@prisma/client [external] (@prisma/client, cjs, [project]/node_modules/@prisma/client)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$prisma$2f$adapter$2d$neon$2f$dist$2f$index$2e$mjs__$5b$app$2d$route$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/@prisma/adapter-neon/dist/index.mjs [app-route] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$neondatabase$2f$serverless$2f$index$2e$mjs__$5b$app$2d$route$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/@neondatabase/serverless/index.mjs [app-route] (ecmascript)");
 ;
 ;
-// 1. Ya no necesitamos importar 'Pool', le pasamos la URL directo al adaptador
-const adapter = new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$prisma$2f$adapter$2d$neon$2f$dist$2f$index$2e$mjs__$5b$app$2d$route$5d$__$28$ecmascript$29$__["PrismaNeon"]({
+;
+const pool = new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$neondatabase$2f$serverless$2f$index$2e$mjs__$5b$app$2d$route$5d$__$28$ecmascript$29$__["Pool"]({
     connectionString: process.env.DATABASE_URL
 });
+const adapter = new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$prisma$2f$adapter$2d$neon$2f$dist$2f$index$2e$mjs__$5b$app$2d$route$5d$__$28$ecmascript$29$__["PrismaNeon"](pool);
 const globalForPrisma = globalThis;
 const prisma = globalForPrisma.prisma ?? new __TURBOPACK__imported__module__$5b$externals$5d2f40$prisma$2f$client__$5b$external$5d$__$2840$prisma$2f$client$2c$__cjs$2c$__$5b$project$5d2f$node_modules$2f40$prisma$2f$client$29$__["PrismaClient"]({
     adapter,
@@ -420,11 +422,20 @@ async function GET(req) {
     }
 }
 async function PATCH(req) {
-    const { user, error } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$utils$2f$auth$2e$utils$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["getAuthUser"])(req);
+    const { user } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$utils$2f$auth$2e$utils$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["getAuthUser"])(req);
     if (!user) return (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$utils$2f$api$2d$response$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["unauthorized"])('No autorizado');
     try {
         const body = await req.json();
         const { fullName, telefono, ubicacion, titulo, avatarUrl } = body;
+        // 🔧 CORRECCIÓN: Validar avatarUrl si viene, pero sin schema Zod
+        if (avatarUrl !== undefined && avatarUrl !== null && avatarUrl !== '') {
+            // Validar que sea una URL válida (si viene)
+            try {
+                new URL(avatarUrl);
+            } catch  {
+                return (0, __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$utils$2f$api$2d$response$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["badRequest"])('avatarUrl debe ser una URL válida');
+            }
+        }
         const updatedUser = await __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$models$2f$user$2e$model$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].user.update({
             where: {
                 id: user.userId
@@ -443,7 +454,7 @@ async function PATCH(req) {
                     titulo
                 },
                 ...avatarUrl !== undefined && {
-                    avatarUrl
+                    avatarUrl: avatarUrl || null
                 }
             },
             select: {
