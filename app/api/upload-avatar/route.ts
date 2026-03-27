@@ -45,7 +45,11 @@ export async function POST(req: NextRequest) {
       ).end(webpBuffer);
     });
 
-    return NextResponse.json({ success: true, url: result.secure_url });
+    return NextResponse.json({ 
+      success: true, 
+      data: { url: result.secure_url },  
+      message: "Avatar subido correctamente" 
+    });
 
   } catch (error) {
     console.error('Error procesando imagen:', error);
