@@ -3,9 +3,6 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  experimental: {
-    missingSuspenseWithCSRBailout: false,
-  },
   output: 'standalone',
   async headers() {
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
