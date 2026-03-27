@@ -16,7 +16,7 @@ import {
 // POST /api/auth/login
 // Pantalla: Iniciar sesión
 // ─────────────────────────────────────────────────────────────
-
+export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
 
   // Rate limit
