@@ -1,0 +1,16 @@
+{
+  "/_global-error/page": "/_global-error",
+  "/_not-found/page": "/_not-found",
+  "/api/auth/forgot-password/route": "/api/auth/forgot-password",
+  "/api/auth/login/route": "/api/auth/login",
+  "/api/auth/me/route": "/api/auth/me",
+  "/api/auth/refresh/route": "/api/auth/refresh",
+  "/api/auth/register/route": "/api/auth/register",
+  "/api/auth/resend-verification/route": "/api/auth/resend-verification",
+  "/api/auth/reset-password/route": "/api/auth/reset-password",
+  "/api/auth/verify-email/route": "/api/auth/verify-email",
+  "/api/cv/analyze/route": "/api/cv/analyze",
+  "/api/health/route": "/api/health",
+  "/api/upload-avatar/route": "/api/upload-avatar",
+  "/page": "/"
+}
