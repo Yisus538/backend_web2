@@ -1,6 +1,6 @@
 generator client {
-  provider        = "prisma-client-js"
-  previewFeatures = ["driverAdapters"]
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
@@ -22,13 +22,10 @@ model User {
   verificationTokenExpiresAt DateTime?
   resetToken                 String?
   resetTokenExpiresAt        DateTime?
-  
-  // NUEVOS CAMPOS PARA EL PERFIL
-  avatarUrl                  String?   @db.Text
+  avatarUrl                  String?
   telefono                   String?
   ubicacion                  String?
   titulo                     String?
-
   createdAt                  DateTime  @default(now())
   updatedAt                  DateTime  @updatedAt
 }
