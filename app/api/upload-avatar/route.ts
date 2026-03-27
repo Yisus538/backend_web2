@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/utils/auth.utils';
 import sharp from 'sharp';
-import path from 'path';
-import fs from 'fs/promises';
+import { v2 as cloudinary } from 'cloudinary';
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME!,
+  api_key: process.env.CLOUDINARY_API_KEY!,
+  api_secret: process.env.CLOUDINARY_API_SECRET!,
+});
 
 export async function POST(req: NextRequest) {
   const { user } = getAuthUser(req);
@@ -19,23 +24,28 @@ export async function POST(req: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-   const avatarsDir = path.join('/tmp', 'avatars');
-    try {
-      await fs.access(avatarsDir);
-    } catch {
-      await fs.mkdir(avatarsDir, { recursive: true });
-    }
-
-    const filename = `${user.userId}-${Date.now()}.webp`;
-    const filepath = path.join(avatarsDir, filename);
-
-    await sharp(buffer)
+    // Convertir a webp con sharp
+    const webpBuffer = await sharp(buffer)
       .resize(500, 500, { fit: 'cover' })
       .webp({ quality: 80 })
-      .toFile(filepath);
+      .toBuffer();
 
-    // La URL devuelta necesita ser servida — en producción reemplazar con URL de storage externo
-    return NextResponse.json({ success: true, url: `/avatars/${filename}` });
+    // Subir a Cloudinary
+    const result = await new Promise<{ secure_url: string }>((resolve, reject) => {
+      cloudinary.uploader.upload_stream(
+        {
+          folder: 'avatars',
+          public_id: `${user.userId}-${Date.now()}`,
+          resource_type: 'image',
+        },
+        (error, result) => {
+          if (error || !result) return reject(error);
+          resolve(result as { secure_url: string });
+        }
+      ).end(webpBuffer);
+    });
+
+    return NextResponse.json({ success: true, url: result.secure_url });
 
   } catch (error) {
     console.error('Error procesando imagen:', error);
