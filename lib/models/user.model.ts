@@ -1,23 +1,19 @@
-import { PrismaClient } from '@prisma/client/edge';
+import { PrismaClient } from '@prisma/client';
 import { PrismaNeon } from '@prisma/adapter-neon';
+import { Pool } from '@neondatabase/serverless';
 import { UserRole } from '../types';
 
-// 1. Ya no necesitamos importar 'Pool', le pasamos la URL directo al adaptador
-const adapter = new PrismaNeon({
-  connectionString: process.env.DATABASE_URL as string
-});
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const adapter = new PrismaNeon(pool);
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 
-// 2. Inicializamos Prisma
 export const prisma =
-  globalForPrisma.prisma ?? 
-  new PrismaClient({ 
-    adapter,
-    log: ['error'] 
-  });
+  globalForPrisma.prisma ??
+  new PrismaClient({ adapter, log: ['error'] });
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+
 // ─── Queries ─────────────────────────────────────────────────
 
 export const findByEmail = (email: string) =>
