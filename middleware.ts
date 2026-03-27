@@ -6,8 +6,8 @@ const allowedOrigins = [
   'http://127.0.0.1:5500',
   'http://localhost:3000',
   'http://localhost:5173',
-  'https://frontendweb2-production.up.railway.app',
-];
+  process.env.FRONTEND_URL!,
+].filter(Boolean);
 
 export function middleware(req: NextRequest) {
   // Obtenemos el origen de la petición
