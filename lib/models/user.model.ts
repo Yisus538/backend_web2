@@ -1,12 +1,15 @@
 import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
 import { UserRole } from '../types';
 
-// Railway usa Postgres estándar — no requiere el adapter de Neon
+// Prisma 7 usa engine WASM — requiere un adapter de base de datos
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
+
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
 
 export const prisma =
   globalForPrisma.prisma ??
-  new PrismaClient({ log: ['error'] });
+  new PrismaClient({ adapter, log: ['error'] });
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 

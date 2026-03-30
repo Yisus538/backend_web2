@@ -14,7 +14,7 @@ export const sendVerificationEmail = async (
   fullName: string,
   token: string,
 ): Promise<void> => {
-  const verifyUrl = `${config.frontendUrl}/index.html#/verify-email?token=${token}`;
+  const verifyUrl = `${config.frontendUrl}${config.emailRoutes.verifyEmail}?token=${token}`;
 
   await transporter.sendMail({
     from: `"RecruitPro" <${process.env.GMAIL_USER}>`,
@@ -46,7 +46,7 @@ export const sendPasswordResetEmail = async (
   email: string,
   resetToken: string,
 ): Promise<void> => {
-  const resetUrl = `${config.frontendUrl}/index.html#/reset-password?token=${resetToken}`;
+  const resetUrl = `${config.frontendUrl}${config.emailRoutes.resetPassword}?token=${resetToken}`;
 
   await transporter.sendMail({
     from: `"RecruitPro" <${process.env.GMAIL_USER}>`,

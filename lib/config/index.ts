@@ -9,6 +9,12 @@ export const config = {
   nodeEnv: process.env.NODE_ENV || 'development',
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
 
+  // Paths del frontend usados en emails transaccionales
+  emailRoutes: {
+    verifyEmail:   '/index.html#/verify-email',
+    resetPassword: '/index.html#/reset-password',
+  },
+
   jwt: {
     secret: env('JWT_SECRET', 'dev_secret_change_in_production_min32chars'),
     expiresIn: process.env.JWT_EXPIRES_IN || '1h',
