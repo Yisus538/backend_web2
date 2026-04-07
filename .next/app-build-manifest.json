@@ -1,19 +1,24 @@
 {
   "pages": {
-    "/api/auth/me/route": [
+    "/api/auth/register/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/api/auth/me/route.js"
-    ],
-    "/api/upload-avatar/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/upload-avatar/route.js"
+      "static/chunks/app/api/auth/register/route.js"
     ],
     "/api/auth/login/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/api/auth/login/route.js"
+    ],
+    "/api/auth/verify-email/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/auth/verify-email/route.js"
+    ],
+    "/api/auth/me/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/auth/me/route.js"
     ]
   }
 }

@@ -1,4 +1,6 @@
 {
+  "/api/auth/verify-email/route": "app/api/auth/verify-email/route.js",
   "/api/auth/me/route": "app/api/auth/me/route.js",
+  "/api/auth/register/route": "app/api/auth/register/route.js",
   "/api/auth/login/route": "app/api/auth/login/route.js"
 }
