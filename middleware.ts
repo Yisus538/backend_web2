@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Aquí están todos tus puertos (Live Server, Next.js frontend, Vite, etc.)
+// Creacion de db
 const allowedOrigins = [
   'http://localhost:3000',
   'http://127.0.0.1:3000',
