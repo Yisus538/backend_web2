@@ -111,6 +111,10 @@ export const login = async (
 
   await UserModel.resetFailedAttempts(user.id);
 
+  if (!user.isEmailVerified) {
+    throw new Error('EMAIL_NOT_VERIFIED');
+  }
+
   const tokens = generateTokens({
     userId: user.id,
     email: user.email,

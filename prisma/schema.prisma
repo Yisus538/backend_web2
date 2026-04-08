@@ -17,9 +17,7 @@ model User {
   isEmailVerified            Boolean   @default(false)
   failedLoginAttempts        Int       @default(0)
   lockedUntil                DateTime?
-  verificationToken          String?
   verificationTokenExpiresAt DateTime?
-  resetToken                 String?
   resetTokenExpiresAt        DateTime?
   verificationTokenHash      String?   @unique @map("token_verificacion_hash")
   resetTokenHash             String?   @unique @map("token_reset_hash")

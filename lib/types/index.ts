@@ -18,9 +18,7 @@ export interface User {
   lockedUntil: Date | null;
   isEmailVerified: boolean;
   isActive: boolean;
-  verificationToken: string | null;
   verificationTokenExpiresAt: Date | null;
-  resetToken: string | null;
   resetTokenExpiresAt: Date | null;
 }
 

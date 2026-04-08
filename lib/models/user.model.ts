@@ -40,15 +40,7 @@ export const findByVerificationTokenHash = (tokenHash: string) =>
 export const findByResetTokenHash = (tokenHash: string) =>
   prisma.user.findFirst({ where: { resetTokenHash: tokenHash } });
 
-// ─── Compatibilidad FASE 1 (texto plano, mantener hasta FASE 3) ──
-
-/** @deprecated FASE 1 compat — eliminar en FASE 3 */
-export const findByResetToken = (token: string) =>
-  prisma.user.findFirst({ where: { resetToken: token } });
-
-/** @deprecated FASE 1 compat — eliminar en FASE 3 */
-export const findByVerificationToken = (token: string) =>
-  prisma.user.findFirst({ where: { verificationToken: token } });
+// ─── Compatibilidad FASE 1 (eliminada en FASE 3) ─────────────
 
 // ─────────────────────────────────────────────────────────────
 // Crear usuario
@@ -78,9 +70,9 @@ export const createUser = (data: {
 // ─────────────────────────────────────────────────────────────
 
 /**
- * Guarda token de verificación con dual-write:
- * - verificationToken:     texto plano (compatibilidad FASE 1)
- * - verificationTokenHash: SHA-256 del token (nuevo, seguro)
+ * Guarda token de verificación (FASE 3 — solo hash):
+ * - verificationTokenHash: SHA-256 del token
+ * - verificationTokenExpiresAt: fecha de expiración
  */
 export const saveVerificationToken = (
   id: string,
@@ -91,18 +83,15 @@ export const saveVerificationToken = (
   prisma.user.update({
     where: { id },
     data: {
-      // Campo viejo — mantener hasta FASE 3
-      verificationToken: rawToken,
       verificationTokenExpiresAt: expiresAt,
-      // Campo nuevo — seguro, usado en FASE 2+
       verificationTokenHash: tokenHash,
     },
   });
 
 /**
- * Guarda token de reset con dual-write:
- * - resetToken:     texto plano (compatibilidad FASE 1)
- * - resetTokenHash: SHA-256 del token (nuevo, seguro)
+ * Guarda token de reset (FASE 3 — solo hash):
+ * - resetTokenHash: SHA-256 del token
+ * - resetTokenExpiresAt: fecha de expiración
  */
 export const saveResetToken = (
   id: string,
@@ -113,10 +102,7 @@ export const saveResetToken = (
   prisma.user.update({
     where: { id },
     data: {
-      // Campo viejo — mantener hasta FASE 3
-      resetToken: rawToken,
       resetTokenExpiresAt: expiresAt,
-      // Campo nuevo — seguro, usado en FASE 2+
       resetTokenHash: tokenHash,
     },
   });
@@ -128,8 +114,6 @@ export const markEmailVerified = (id: string) =>
     where: { id },
     data: {
       isEmailVerified: true,
-      // Limpiar ambos campos (viejo y nuevo) al verificar
-      verificationToken: null,
       verificationTokenExpiresAt: null,
       verificationTokenHash: null,
     },
@@ -140,8 +124,6 @@ export const updatePassword = (id: string, passwordHash: string) =>
     where: { id },
     data: {
       passwordHash,
-      // Limpiar ambos campos (viejo y nuevo) al resetear
-      resetToken: null,
       resetTokenExpiresAt: null,
       resetTokenHash: null,
       failedLoginAttempts: 0,
