@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import * as UserModel from '@/lib/models/user.model';
-import { generateToken, hashToken, getVerificationTokenExpiry } from '@/lib/utils/token.utils'; // ✅ imports correctos
+import { generateToken, hashToken, getVerificationTokenExpiry } from '@/lib/utils/token.utils'; 
 import { sendVerificationEmail } from '@/lib/services/email.service';
 import { getAuthUser } from '@/lib/utils/auth.utils';
 import { ok, unauthorized, tooManyRequests } from '@/lib/utils/api-response';
@@ -35,8 +35,7 @@ export async function POST(req: NextRequest) {
   const tokenHash = hashToken(rawToken);
   const expiresAt = getVerificationTokenExpiry();
 
-  // ✅ Los 4 argumentos que espera la función
-  await UserModel.saveVerificationToken(dbUser.id, rawToken, tokenHash, expiresAt);
+  await UserModel.saveVerificationToken(dbUser.id, tokenHash, expiresAt);
   await sendVerificationEmail(dbUser.email, dbUser.fullName, rawToken);
 
   resendCooldown.set(user.userId, now);

@@ -62,21 +62,15 @@ export const createUser = (data: {
   });
 
 // ─────────────────────────────────────────────────────────────
-// FASE 2 — Guardar tokens con dual-write
-//
-// Durante la migración se escribe TANTO en el campo de texto plano
-// (campo viejo) COMO en el campo hash (campo nuevo).
-// Cuando FASE 3 elimine los campos viejos, solo quedan los _hash.
+// Guardar tokens — FASE 3: solo hash, dual-write eliminado
 // ─────────────────────────────────────────────────────────────
 
 /**
- * Guarda token de verificación (FASE 3 — solo hash):
- * - verificationTokenHash: SHA-256 del token
- * - verificationTokenExpiresAt: fecha de expiración
+ * Guarda token de verificación (solo hash desde FASE 3).
+ * rawToken ya NO se recibe — nunca se persiste en texto plano.
  */
 export const saveVerificationToken = (
   id: string,
-  rawToken: string,
   tokenHash: string,
   expiresAt: Date,
 ) =>
@@ -89,13 +83,11 @@ export const saveVerificationToken = (
   });
 
 /**
- * Guarda token de reset (FASE 3 — solo hash):
- * - resetTokenHash: SHA-256 del token
- * - resetTokenExpiresAt: fecha de expiración
+ * Guarda token de reset (solo hash desde FASE 3).
+ * rawToken ya NO se recibe — nunca se persiste en texto plano.
  */
 export const saveResetToken = (
   id: string,
-  rawToken: string,
   tokenHash: string,
   expiresAt: Date,
 ) =>

@@ -31,10 +31,6 @@ export const generateToken = (): string =>
 export const hashToken = (token: string): string =>
   crypto.createHash('sha256').update(token).digest('hex');
 
-// ─── Alias para compatibilidad con código existente ──────────
-/** @deprecated Usar generateToken() */
-export const generateResetToken = generateToken;
-
 // ─── Expiración ──────────────────────────────────────────────
 
 /** Expiry para reset de contraseña (configurable via config) */
@@ -53,6 +49,3 @@ export const isTokenValid = (expiresAt: Date | null): boolean => {
   if (!expiresAt) return false;
   return expiresAt > new Date();
 };
-
-/** @deprecated Usar isTokenValid() */
-export const isResetTokenValid = isTokenValid;

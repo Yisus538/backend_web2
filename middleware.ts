@@ -10,31 +10,30 @@ const allowedOrigins = [
 ];
 
 export function middleware(req: NextRequest) {
-  // Obtenemos el origen de la petición
   const origin = req.headers.get('origin') ?? '';
-  
-  // Verificamos si el origen está en nuestra lista blanca
   const isAllowed = allowedOrigins.includes(origin);
-  const allowOrigin = isAllowed ? origin : allowedOrigins[0];
 
-  // 1. Manejo de las peticiones de "Preflight" (OPTIONS) que hace el navegador
+  // Preflight
   if (req.method === 'OPTIONS') {
     return new NextResponse(null, {
       status: 204,
       headers: {
-        'Access-Control-Allow-Origin': allowOrigin,
+        // Si el origin no está en la lista, no se expone el header — el browser bloquea la request
+        ...(isAllowed && {
+          'Access-Control-Allow-Origin': origin,
+          'Access-Control-Allow-Credentials': 'true',
+        }),
         'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS, PATCH',
-        'Access-Control-Allow-Headers' : 'Content-Type, Authorization, X-Requested-With',
-        'Access-Control-Allow-Credentials': 'true',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
       },
     });
   }
 
-  // 2. Manejo de las peticiones reales (GET, POST, etc.)
   const res = NextResponse.next();
-  res.headers.set('Access-Control-Allow-Origin', allowOrigin);
-  res.headers.set('Access-Control-Allow-Credentials', 'true');
-  
+  if (isAllowed && origin) {
+    res.headers.set('Access-Control-Allow-Origin', origin);
+    res.headers.set('Access-Control-Allow-Credentials', 'true');
+  }
   return res;
 }
 

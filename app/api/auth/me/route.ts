@@ -41,13 +41,10 @@ export async function PATCH(req: NextRequest) {
     const body = await req.json();
     const { fullName, telefono, ubicacion, titulo, avatarUrl } = body;
 
-    // 🔧 CORRECCIÓN: Validar avatarUrl si viene, pero sin schema Zod
     if (avatarUrl !== undefined && avatarUrl !== null && avatarUrl !== '') {
-      // Validar que sea una URL válida (si viene)
-      try {
-        new URL(avatarUrl);
-      } catch {
-        return badRequest('avatarUrl debe ser una URL válida');
+      const parsed = (() => { try { return new URL(avatarUrl); } catch { return null; } })();
+      if (!parsed || !['https:', 'http:'].includes(parsed.protocol)) {
+        return badRequest('avatarUrl debe ser una URL https válida');
       }
     }
 

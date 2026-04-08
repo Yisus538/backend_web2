@@ -65,7 +65,7 @@ export const register = async (dto: RegisterDTO): Promise<UserPublic> => {
   const tokenHash = hashToken(rawToken);
   const expiresAt = getVerificationTokenExpiry();
 
-  await UserModel.saveVerificationToken(user.id, rawToken, tokenHash, expiresAt);
+  await UserModel.saveVerificationToken(user.id, tokenHash, expiresAt);
 
   // Enviar el token ORIGINAL por email (nunca el hash)
   sendVerificationEmail(user.email, user.fullName, rawToken).catch(
@@ -152,7 +152,7 @@ export const forgotPassword = async (dto: ForgotPasswordDTO): Promise<void> => {
   const tokenHash = hashToken(rawToken);
   const expiresAt = getResetTokenExpiry();
 
-  await UserModel.saveResetToken(user.id, rawToken, tokenHash, expiresAt);
+  await UserModel.saveResetToken(user.id, tokenHash, expiresAt);
 
   // Enviar el token ORIGINAL por email (nunca el hash)
   sendPasswordResetEmail(user.email, rawToken).catch((err) =>
@@ -201,7 +201,7 @@ export const resendVerification = async (email: string): Promise<void> => {
   const tokenHash = hashToken(rawToken);
   const expiresAt = getVerificationTokenExpiry();
 
-  await UserModel.saveVerificationToken(user.id, rawToken, tokenHash, expiresAt);
+  await UserModel.saveVerificationToken(user.id, tokenHash, expiresAt);
 
   sendVerificationEmail(user.email, user.fullName, rawToken).catch((err) =>
     console.error('[resendVerification] Error al enviar email:', err),
