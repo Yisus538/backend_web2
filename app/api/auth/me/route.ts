@@ -1,37 +1,49 @@
 import { NextRequest } from 'next/server';
 import { getAuthUser } from '@/lib/utils/auth.utils';
 import { ok, unauthorized, serverError, badRequest } from '@/lib/utils/api-response';
-import { prisma } from '@/lib/models/user.model'; // IMPORTACIÓN CORREGIDA 🚀
+import { prisma } from '@/lib/models/user.model';
+import { getNavForRole } from '@/lib/models/nav.model';
+
+// ─────────────────────────────────────────────────────────────
+// GET /api/auth/me
+// Devuelve datos del usuario + nav actualizada desde DB
+// ─────────────────────────────────────────────────────────────
 
 export async function GET(req: NextRequest) {
   const { user, error } = getAuthUser(req);
 
   if (!user) {
     if (error === 'NO_TOKEN') return unauthorized('Token no proporcionado');
-    if (error === 'EXPIRED') return unauthorized('Token expirado');
+    if (error === 'EXPIRED')  return unauthorized('Token expirado');
     return unauthorized('Token inválido');
   }
 
   try {
     const dbUser = await prisma.user.findUnique({
-      where: { id: user.userId }, // CORREGIDO: userId en lugar de id 🚀
-      select: { 
-        id: true, fullName: true, email: true, role: true, 
+      where: { id: user.userId },
+      select: {
+        id: true, fullName: true, email: true, role: true,
         avatarUrl: true, telefono: true, ubicacion: true, titulo: true,
-        isEmailVerified: true
-      }
+        isEmailVerified: true,
+      },
     });
 
     if (!dbUser) return unauthorized('Usuario no encontrado');
 
-    return ok('Usuario autenticado', { user: dbUser });
+    // Nav fresca desde DB (por si cambió desde el login)
+    const nav = await getNavForRole(dbUser.role);
+
+    return ok('Usuario autenticado', { user: dbUser, nav });
   } catch (err) {
     console.error(err);
     return serverError('Error al obtener los datos');
   }
 }
 
-// app/api/auth/me/route.ts - PATCH handler
+// ─────────────────────────────────────────────────────────────
+// PATCH /api/auth/me
+// Actualiza campos del perfil
+// ─────────────────────────────────────────────────────────────
 
 export async function PATCH(req: NextRequest) {
   const { user } = getAuthUser(req);
@@ -51,22 +63,16 @@ export async function PATCH(req: NextRequest) {
     const updatedUser = await prisma.user.update({
       where: { id: user.userId },
       data: {
-        ...(fullName && { fullName }),
-        ...(telefono !== undefined && { telefono }),
+        ...(fullName  && { fullName }),
+        ...(telefono  !== undefined && { telefono }),
         ...(ubicacion !== undefined && { ubicacion }),
-        ...(titulo !== undefined && { titulo }),
-        ...(avatarUrl !== undefined && { avatarUrl: avatarUrl || null }), 
+        ...(titulo    !== undefined && { titulo }),
+        ...(avatarUrl !== undefined && { avatarUrl: avatarUrl || null }),
       },
-      select: { 
-        id: true, 
-        fullName: true, 
-        email: true, 
-        role: true, 
-        avatarUrl: true, 
-        telefono: true, 
-        ubicacion: true, 
-        titulo: true 
-      }
+      select: {
+        id: true, fullName: true, email: true, role: true,
+        avatarUrl: true, telefono: true, ubicacion: true, titulo: true,
+      },
     });
 
     return ok('Perfil actualizado', { user: updatedUser });

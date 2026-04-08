@@ -1,4 +1,5 @@
 import * as UserModel from '../models/user.model';
+import * as NavModel  from '../models/nav.model';
 import { hashPassword, comparePassword, validatePasswordStrength } from '../utils/password.utils';
 import { generateTokens, verifyRefreshToken } from '../utils/jwt.utils';
 import {
@@ -19,6 +20,7 @@ import {
   UserPublic,
   UserRole,
 } from '../types';
+import type { NavData } from '../models/nav.model';
 
 // ─── Helper interno ───────────────────────────────────────────
 
@@ -27,13 +29,13 @@ type PrismaUser = NonNullable<Awaited<ReturnType<typeof UserModel.findById>>>;
 const toPublicUser = (user: PrismaUser): UserPublic => {
   if (!user) throw new Error('USER_NOT_FOUND');
   return {
-    id: user.id,
-    fullName: user.fullName,
-    email: user.email,
-    role: user.role as UserRole,
+    id:              user.id,
+    fullName:        user.fullName,
+    email:           user.email,
+    role:            user.role as UserRole,
     isEmailVerified: user.isEmailVerified,
-    createdAt: user.createdAt,
-    avatarUrl: user.avatarUrl,
+    createdAt:       user.createdAt,
+    avatarUrl:       user.avatarUrl,
   };
 };
 
@@ -54,20 +56,18 @@ export const register = async (dto: RegisterDTO): Promise<UserPublic> => {
 
   const passwordHash = await hashPassword(dto.password);
   const user = await UserModel.createUser({
-    fullName: dto.fullName,
-    email: dto.email,
+    fullName:     dto.fullName,
+    email:        dto.email,
     passwordHash,
-    role: dto.role,
+    role:         dto.role,
   });
 
-  // FASE 2: generar token → hashear → guardar hash, enviar token
   const rawToken = generateToken();
   const tokenHash = hashToken(rawToken);
   const expiresAt = getVerificationTokenExpiry();
 
   await UserModel.saveVerificationToken(user.id, tokenHash, expiresAt);
 
-  // Enviar el token ORIGINAL por email (nunca el hash)
   sendVerificationEmail(user.email, user.fullName, rawToken).catch(
     (err) => console.error('[email] Error enviando verificación:', err),
   );
@@ -76,12 +76,12 @@ export const register = async (dto: RegisterDTO): Promise<UserPublic> => {
 };
 
 // ─────────────────────────────────────────────────────────────
-// Login
+// Login — devuelve user + tokens + nav desde DB
 // ─────────────────────────────────────────────────────────────
 
 export const login = async (
   dto: LoginDTO,
-): Promise<{ user: UserPublic; tokens: AuthTokens }> => {
+): Promise<{ user: UserPublic; tokens: AuthTokens; nav: NavData }> => {
   const user = await UserModel.findByEmail(dto.email);
 
   if (!user) throw new Error('INVALID_CREDENTIALS');
@@ -117,11 +117,14 @@ export const login = async (
 
   const tokens = generateTokens({
     userId: user.id,
-    email: user.email,
-    role: user.role as UserRole,
+    email:  user.email,
+    role:   user.role as UserRole,
   });
 
-  return { user: toPublicUser(user), tokens };
+  // Obtener navegación desde DB para el rol del usuario
+  const nav = await NavModel.getNavForRole(user.role);
+
+  return { user: toPublicUser(user), tokens, nav };
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -145,16 +148,14 @@ export const refreshTokens = async (refreshToken: string): Promise<AuthTokens> =
 
 export const forgotPassword = async (dto: ForgotPasswordDTO): Promise<void> => {
   const user = await UserModel.findByEmail(dto.email);
-  if (!user || !user.isActive) return; // Respuesta genérica anti-enumeración
+  if (!user || !user.isActive) return;
 
-  // FASE 2: generar token → hashear → guardar hash, enviar token
   const rawToken = generateToken();
   const tokenHash = hashToken(rawToken);
   const expiresAt = getResetTokenExpiry();
 
   await UserModel.saveResetToken(user.id, tokenHash, expiresAt);
 
-  // Enviar el token ORIGINAL por email (nunca el hash)
   sendPasswordResetEmail(user.email, rawToken).catch((err) =>
     console.error('[forgotPassword] Error al enviar email:', err),
   );
@@ -169,13 +170,11 @@ export const resetPassword = async (dto: ResetPasswordDTO): Promise<void> => {
     throw new Error('PASSWORDS_DONT_MATCH');
   }
 
-  // FASE 2: hashear el token recibido y buscar por hash en DB
   const tokenHash = hashToken(dto.token);
   const user = await UserModel.findByResetTokenHash(tokenHash);
 
   if (!user) throw new Error('INVALID_RESET_TOKEN');
 
-  // La expiración se lee del campo viejo (compatible con ambas fases)
   if (!isTokenValid(user.resetTokenExpiresAt)) {
     throw new Error('EXPIRED_RESET_TOKEN');
   }
@@ -184,8 +183,6 @@ export const resetPassword = async (dto: ResetPasswordDTO): Promise<void> => {
   if (!valid) throw new Error(`PASSWORD_WEAK:${errors.join('|')}`);
 
   const passwordHash = await hashPassword(dto.newPassword);
-
-  // updatePassword limpia resetToken, resetTokenExpiresAt y resetTokenHash
   await UserModel.updatePassword(user.id, passwordHash);
 };
 
