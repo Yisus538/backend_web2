@@ -1,3 +1,14 @@
+// ================================================================
+// PRISMA SCHEMA — ReclutaIA ATS
+// ================================================================
+// Convención de nombres:
+//   - Modelos Prisma: PascalCase
+//   - Tablas DB:      snake_case  (via @@map)
+//   - Columnas DB:    snake_case  (via @map) excepto las ya
+//                     existentes en usuarios que Prisma generó
+//                     en camelCase sin @map
+// ================================================================
+
 generator client {
   provider      = "prisma-client-js"
   binaryTargets = ["native", "debian-openssl-3.0.x"]
@@ -5,8 +16,12 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
+
+// ================================================================
+// BLOQUE A: AUTENTICACIÓN Y USUARIOS
+// Superclase + subclases por rol
+// ================================================================
 
 model User {
   id                         String    @id @default(uuid())
@@ -20,8 +35,8 @@ model User {
   lockedUntil                DateTime?
   verificationTokenExpiresAt DateTime?
   resetTokenExpiresAt        DateTime?
-  verificationTokenHash      String?   @unique @map("token_verificacion_hash")
-  resetTokenHash             String?   @unique @map("token_reset_hash")
+  verificationTokenHash      String?   @map("token_verificacion_hash")
+  resetTokenHash             String?   @map("token_reset_hash")
   avatarUrl                  String?
   telefono                   String?
   ubicacion                  String?
@@ -29,5 +44,258 @@ model User {
   createdAt                  DateTime  @default(now())
   updatedAt                  DateTime  @updatedAt
 
+  // Relaciones con subclases
+  empresa        Empresa?
+  candidato      Candidato?
+  administrativo Administrativo?
+
   @@map("usuarios")
+}
+
+model Empresa {
+  usuarioId    String  @id @map("usuario_id")
+  nombreEmpresa String? @map("nombre_empresa")
+  descripcion  String?
+
+  usuario      User                @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  ofertas      OfertaLaboral[]
+
+  @@map("empresas")
+}
+
+model Candidato {
+  usuarioId String  @id @map("usuario_id")
+  biografia String?
+
+  usuario    User                  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  postulaciones Postulacion[]
+  analisisDirectos AnalisisCvDirecto[]
+  habilidades CandidatoHabilidad[]
+
+  @@map("candidatos")
+}
+
+model Administrativo {
+  usuarioId    String  @id @map("usuario_id")
+  departamento String?
+  nivelAcceso  Int     @default(1) @map("nivel_acceso")
+  permisosExtra Json?  @map("permisos_extra")
+
+  usuario User @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@map("administrativos")
+}
+
+// ================================================================
+// BLOQUE B: ANÁLISIS DE CV
+// Dos flujos distintos: directo (Make.com) y por postulación (ATS)
+// ================================================================
+
+model AnalisisCvDirecto {
+  id                 String    @id @default(uuid())
+  candidatoId        String?   @map("candidato_id")
+  nombreCompleto     String?   @map("nombre_completo")
+  correoCv           String?   @map("correo_cv")
+  telefonoCv         String?   @map("telefono_cv")
+  puestoEvaluado     String?   @map("puesto_evaluado")
+  score              Int?
+  apto               Boolean?
+  motivoRechazo      String?   @map("motivo_rechazo")
+  cvCompleto         Json?     @map("cv_completo")
+  evaluacionCompleta Json?     @map("evaluacion_completa")
+  analizadoEl        DateTime  @default(now()) @map("analizado_el")
+
+  candidato          Candidato?       @relation(fields: [candidatoId], references: [usuarioId], onDelete: SetNull)
+  historialAnalisis  HistorialAnalisis[]
+
+  @@map("analisis_cv_directo")
+}
+
+model AnalisisCvPostulacion {
+  id            String      @id @default(uuid())
+  postulacionId String      @unique @map("postulacion_id")
+  puntuacion    Int?
+  resumen       String?
+  datosCrudos   Json?       @map("datos_crudos")
+  apto          Boolean?
+  motivo        String?
+  fortalezas    Json?
+  debilidades   Json?
+  riesgos       Json?
+  analizadoEl   DateTime    @default(now()) @map("analizado_el")
+
+  postulacion        Postulacion          @relation(fields: [postulacionId], references: [id], onDelete: Cascade)
+  habilidadesDetectadas HabilidadDetectada[]
+
+  @@map("analisis_cv_postulacion")
+}
+
+// ================================================================
+// BLOQUE C: ATS CORE — Vacantes, postulaciones y habilidades
+// ================================================================
+
+model OfertaLaboral {
+  id          String   @id @default(uuid())
+  empresaId   String   @map("empresa_id")
+  titulo      String
+  descripcion String
+  estado      String   @default("borrador")
+  creadaEl    DateTime @default(now()) @map("creada_el")
+
+  empresa      Empresa       @relation(fields: [empresaId], references: [usuarioId], onDelete: Cascade)
+  postulaciones Postulacion[]
+
+  @@map("ofertas_laborales")
+}
+
+model Postulacion {
+  id          String   @id @default(uuid())
+  ofertaId    String   @map("oferta_id")
+  candidatoId String   @map("candidato_id")
+  urlCv       String   @map("url_cv")
+  estado      String   @default("pendiente")
+  creadaEl    DateTime @default(now()) @map("creada_el")
+
+  oferta            OfertaLaboral         @relation(fields: [ofertaId], references: [id], onDelete: Cascade)
+  candidato         Candidato             @relation(fields: [candidatoId], references: [usuarioId], onDelete: Cascade)
+  analisis          AnalisisCvPostulacion?
+  historialAnalisis HistorialAnalisis[]
+
+  @@unique([ofertaId, candidatoId])
+  @@map("postulaciones")
+}
+
+model Habilidad {
+  id     String @id @default(uuid())
+  nombre String @unique
+
+  detectadas  HabilidadDetectada[]
+  candidatos  CandidatoHabilidad[]
+
+  @@map("habilidades")
+}
+
+model HabilidadDetectada {
+  analisisId  String @map("analisis_id")
+  habilidadId String @map("habilidad_id")
+
+  analisis  AnalisisCvPostulacion @relation(fields: [analisisId], references: [id], onDelete: Cascade)
+  habilidad Habilidad             @relation(fields: [habilidadId], references: [id], onDelete: Cascade)
+
+  @@id([analisisId, habilidadId])
+  @@map("habilidades_detectadas")
+}
+
+model CandidatoHabilidad {
+  candidatoId      String   @map("candidato_id")
+  habilidadId      String   @map("habilidad_id")
+  nivel            String?
+  aniosExp         Int?     @map("anios_exp")
+  verificada       Boolean  @default(false)
+  analisisOrigenId String?  @map("analisis_origen_id")
+  creadaEl         DateTime @default(now()) @map("creada_el")
+  actualizadoEl    DateTime @default(now()) @map("actualizado_el")
+
+  candidato Candidato             @relation(fields: [candidatoId], references: [usuarioId], onDelete: Cascade)
+  habilidad Habilidad             @relation(fields: [habilidadId], references: [id], onDelete: Cascade)
+
+  @@id([candidatoId, habilidadId])
+  @@map("candidato_habilidades")
+}
+
+model HistorialAnalisis {
+  id                String    @id @default(uuid())
+  postulacionId     String?   @map("postulacion_id")
+  analisisDirectoId String?   @map("analisis_directo_id")
+  estado            String
+  detalles          String?
+  webhookPayload    Json?     @map("webhook_payload")
+  ipOrigen          String?   @map("ip_origen")
+  duracionMs        Int?      @map("duracion_ms")
+  creadoEl          DateTime  @default(now()) @map("creado_el")
+
+  postulacion     Postulacion?       @relation(fields: [postulacionId], references: [id], onDelete: Cascade)
+  analisisDirecto AnalisisCvDirecto? @relation(fields: [analisisDirectoId], references: [id], onDelete: SetNull)
+
+  @@map("historial_analisis")
+}
+
+// ================================================================
+// BLOQUE D: NAVEGACIÓN DINÁMICA — Sidebar por rol
+// ================================================================
+
+model MenuItem {
+  id            String  @id @default(uuid())
+  itemKey       String  @unique @map("item_key")
+  icon          String
+  label         String
+  hashPath      String  @map("hash_path")
+  activeKeyword String  @map("active_keyword")
+  esItemConfig  Boolean @default(false) @map("es_item_config")
+  esFallback    Boolean @default(false) @map("es_fallback")
+  activo        Boolean @default(true)
+
+  roles RolMenu[]
+
+  @@map("menu_items")
+}
+
+model MenuConfigRol {
+  rol        String @id
+  subtitle   String
+  configHash String @map("config_hash")
+
+  @@map("menu_config_rol")
+}
+
+model RolMenu {
+  rol          String
+  menuItemId   String @map("menu_item_id")
+  ordenRender  Int    @map("orden_render")
+  activePriority Int  @default(99) @map("active_priority")
+
+  menuItem MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+
+  @@id([rol, menuItemId])
+  @@map("roles_menu")
+}
+
+// ================================================================
+// BLOQUE E: CATÁLOGOS — Selects dinámicos para formularios
+// ================================================================
+
+model Catalogo {
+  id     String  @id @default(uuid())
+  clave  String  @unique
+  label  String
+  activo Boolean @default(true)
+
+  opciones OpcionCatalogo[]
+  roles    RolCatalogo[]
+
+  @@map("catalogos")
+}
+
+model OpcionCatalogo {
+  id         String  @id @default(uuid())
+  catalogoId String  @map("catalogo_id")
+  valor      String
+  label      String
+  orden      Int     @default(0)
+  activo     Boolean @default(true)
+
+  catalogo Catalogo @relation(fields: [catalogoId], references: [id], onDelete: Cascade)
+
+  @@unique([catalogoId, valor])
+  @@map("opciones_catalogo")
+}
+
+model RolCatalogo {
+  rol        String
+  catalogoId String @map("catalogo_id")
+
+  catalogo Catalogo @relation(fields: [catalogoId], references: [id], onDelete: Cascade)
+
+  @@id([rol, catalogoId])
+  @@map("roles_catalogo")
 }
