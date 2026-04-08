@@ -20,7 +20,6 @@ export interface User {
   isActive: boolean;
   verificationToken: string | null;
   verificationTokenExpiresAt: Date | null;
-  // Reset de contraseña
   resetToken: string | null;
   resetTokenExpiresAt: Date | null;
 }
