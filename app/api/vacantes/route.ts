@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { getAuthUser } from '@/lib/utils/auth.utils';
 import { ok, created, badRequest, unauthorized, forbidden, serverError } from '@/lib/utils/api-response';
 import * as VacanteService from '@/lib/services/vacante.service';
-import { createVacanteSchema } from '@/lib/validations/vacante.validations.ts';
+import { createVacanteSchema } from '@/lib/validations/vacante.validations';
 
 export async function GET(req: NextRequest) {
   const { user, error } = getAuthUser(req);
