@@ -135,14 +135,20 @@ model AnalisisCvPostulacion {
 // ================================================================
 
 model OfertaLaboral {
-  id          String   @id @default(uuid())
-  empresaId   String   @map("empresa_id")
-  titulo      String
-  descripcion String
-  estado      String   @default("borrador")
-  creadaEl    DateTime @default(now()) @map("creada_el")
+  id                String   @id @default(uuid())
+  empresaId         String   @map("empresa_id")
+  titulo            String
+  descripcion       String
+  estado            String   @default("borrador")
+  categoria         String?
+  modalidad         String?
+  experienciaMinima Int      @default(0) @map("experiencia_minima")
+  requisitos        Json?
+  matchingWeights   Json?    @map("matching_weights")
+  creadaEl          DateTime @default(now()) @map("creada_el")
+  actualizadoEl     DateTime @default(now()) @updatedAt @map("actualizado_el")
 
-  empresa      Empresa       @relation(fields: [empresaId], references: [usuarioId], onDelete: Cascade)
+  empresa       Empresa       @relation(fields: [empresaId], references: [usuarioId], onDelete: Cascade)
   postulaciones Postulacion[]
 
   @@map("ofertas_laborales")
