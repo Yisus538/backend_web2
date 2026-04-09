@@ -13,9 +13,26 @@ export async function GET(req: NextRequest) {
   const estado = searchParams.get('estado') ?? undefined;
   const search = searchParams.get('search') ?? undefined;
 
+  const rawPage  = parseInt(searchParams.get('page')  ?? '1',  10);
+  const rawLimit = parseInt(searchParams.get('limit') ?? '10', 10);
+  const page     = isNaN(rawPage)  || rawPage  < 1 ? 1  : rawPage;
+  const limit    = isNaN(rawLimit) || rawLimit < 1 ? 10 : rawLimit;
+
   try {
-    const vacantes = await VacanteService.listarVacantes(user.userId, { estado, search });
-    return ok('Vacantes obtenidas', { vacantes });
+    const result = await VacanteService.listarVacantes(
+      user.userId,
+      { estado, search },
+      { page, limit },
+    );
+    return ok('Vacantes obtenidas', {
+      vacantes:   result.items,
+      pagination: {
+        total:      result.total,
+        page:       result.page,
+        limit:      result.limit,
+        totalPages: result.totalPages,
+      },
+    });
   } catch (err) {
     const msg = err instanceof Error ? err.message : '';
     if (msg === 'NOT_EMPRESA') return forbidden('Perfil de empresa no encontrado');

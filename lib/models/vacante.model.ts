@@ -29,10 +29,24 @@ const VACANTE_SELECT = {
   _count: { select: { postulaciones: true } },
 };
 
-export const findAllByEmpresa = (
+export interface PaginationParams {
+  page:  number;
+  limit: number;
+}
+
+export interface PaginatedResult<T> {
+  items:      T[];
+  total:      number;
+  page:       number;
+  limit:      number;
+  totalPages: number;
+}
+
+export const findAllByEmpresa = async (
   empresaId: string,
-  filters: { estado?: string; search?: string },
-) => {
+  filters:   { estado?: string; search?: string },
+  pagination: PaginationParams,
+): Promise<PaginatedResult<any>> => {
   const where: any = { empresaId };
 
   if (filters.estado && filters.estado !== 'todas') {
@@ -46,11 +60,27 @@ export const findAllByEmpresa = (
     ];
   }
 
-  return prisma.ofertaLaboral.findMany({
-    where,
-    select:  VACANTE_SELECT,
-    orderBy: { creadaEl: 'desc' },
-  });
+  const { page, limit } = pagination;
+  const skip = (page - 1) * limit;
+
+  const [items, total] = await Promise.all([
+    prisma.ofertaLaboral.findMany({
+      where,
+      select:  VACANTE_SELECT,
+      orderBy: { creadaEl: 'desc' },
+      skip,
+      take:    limit,
+    }),
+    prisma.ofertaLaboral.count({ where }),
+  ]);
+
+  return {
+    items,
+    total,
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit),
+  };
 };
 
 export const findById = (id: string, empresaId: string) =>

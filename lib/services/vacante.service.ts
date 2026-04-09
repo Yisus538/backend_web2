@@ -15,12 +15,19 @@ async function getEmpresaId(userId: string): Promise<string> {
   return userId;
 }
 
+const PAGE_LIMIT_MAX = 100;
+
 export const listarVacantes = async (
   userId:  string,
   filters: { estado?: string; search?: string },
+  pagination: { page?: number; limit?: number } = {},
 ) => {
   const empresaId = await getEmpresaId(userId);
-  return VacanteModel.findAllByEmpresa(empresaId, filters);
+
+  const page  = Math.max(1, pagination.page  ?? 1);
+  const limit = Math.min(PAGE_LIMIT_MAX, Math.max(1, pagination.limit ?? 10));
+
+  return VacanteModel.findAllByEmpresa(empresaId, filters, { page, limit });
 };
 
 export const obtenerVacante = async (userId: string, id: string) => {
