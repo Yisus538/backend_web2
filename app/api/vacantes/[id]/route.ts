@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { getAuthUser } from '@/lib/utils/auth.utils';
 import { ok, badRequest, unauthorized, forbidden, serverError } from '@/lib/utils/api-response';
 import * as VacanteService from '@/lib/services/vacante.service';
-import { updateVacanteSchema, updateEstadoSchema } from '@/lib/validations/vacante.validations.ts';
+import { updateVacanteSchema, updateEstadoSchema } from '@/lib/validations/vacante.validations';
 
 type Params = { params: { id: string } };
 
