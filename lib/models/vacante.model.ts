@@ -7,6 +7,8 @@ export interface VacanteCreateData {
   categoria?:        string;
   modalidad?:        string;
   experienciaMinima: number;
+  salarioMin?:       number;
+  salarioMax?:       number;
   requisitos?:       object;
   matchingWeights?:  object;
 }
@@ -21,6 +23,8 @@ const VACANTE_SELECT = {
   categoria:         true,
   modalidad:         true,
   experienciaMinima: true,
+  salarioMin:        true,
+  salarioMax:        true,
   requisitos:        true,
   matchingWeights:   true,
   creadaEl:          true,

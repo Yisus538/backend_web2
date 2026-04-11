@@ -39,6 +39,8 @@ export const createVacanteSchema = z.object({
   categoria:         z.string().trim().optional(),
   modalidad:         z.string().trim().optional(),
   experienciaMinima: z.number().int().min(0).max(50).default(0),
+  salarioMin:        z.number().int().min(0).optional(),
+  salarioMax:        z.number().int().min(0).optional(),
   requisitos:        requisitosSchema,
   matchingWeights:   matchingWeightsSchema,
 });

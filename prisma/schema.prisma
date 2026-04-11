@@ -143,6 +143,9 @@ model OfertaLaboral {
   categoria         String?
   modalidad         String?
   experienciaMinima Int      @default(0) @map("experiencia_minima")
+  salarioMin        Int?     @map("salario_min")
+  salarioMax        Int?     @map("salario_max")
+  ubicacion         String?
   requisitos        Json?
   matchingWeights   Json?    @map("matching_weights")
   creadaEl          DateTime @default(now()) @map("creada_el")

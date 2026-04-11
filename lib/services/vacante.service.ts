@@ -47,6 +47,8 @@ export const crearVacante = async (userId: string, dto: CreateVacanteDTO) => {
     categoria:         dto.categoria,
     modalidad:         dto.modalidad,
     experienciaMinima: dto.experienciaMinima ?? 0,
+    salarioMin:        dto.salarioMin,
+    salarioMax:        dto.salarioMax,
     requisitos:        dto.requisitos   as object | undefined,
     matchingWeights:   dto.matchingWeights as object | undefined,
   });
@@ -64,6 +66,8 @@ export const actualizarVacante = async (userId: string, id: string, dto: UpdateV
     ...(dto.categoria         !== undefined && { categoria:         dto.categoria }),
     ...(dto.modalidad         !== undefined && { modalidad:         dto.modalidad }),
     ...(dto.experienciaMinima !== undefined && { experienciaMinima: dto.experienciaMinima }),
+    ...(dto.salarioMin        !== undefined && { salarioMin:        dto.salarioMin }),
+    ...(dto.salarioMax        !== undefined && { salarioMax:        dto.salarioMax }),
     ...(dto.requisitos        !== undefined && { requisitos:        dto.requisitos as object }),
     ...(dto.matchingWeights   !== undefined && { matchingWeights:   dto.matchingWeights as object }),
   });
