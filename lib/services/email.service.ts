@@ -3,6 +3,13 @@ import { config } from '../config';
 // ─────────────────────────────────────────────────────────────
 // Email Service — Resend API (3,000 emails/mes gratis)
 // Solo requiere RESEND_API_KEY y RESEND_FROM en las env vars.
+//
+// ⚠️  IMPORTANTE PARA EMAILS A DOMINIOS NO-GMAIL:
+//   - El dominio del remitente (RESEND_FROM) debe estar verificado
+//     en el dashboard de Resend con los DNS records (SPF, DKIM, DMARC).
+//   - Sin verificación, Resend solo envía al email del owner de la cuenta.
+//   - Para testing, usar: onboarding@resend.dev como RESEND_FROM
+//
 // Docs: https://resend.com/docs/api-reference/emails/send-email
 // ─────────────────────────────────────────────────────────────
 
@@ -12,7 +19,9 @@ async function sendEmail(to: string, subject: string, html: string): Promise<voi
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) throw new Error('RESEND_API_KEY no configurada');
 
-  const from = process.env.RESEND_FROM || 'ReclutaIA <noreply@reclutaia.com>';
+  const from = process.env.RESEND_FROM || 'ReclutaIA <onboarding@resend.dev>';
+
+  console.log(`[Email] Enviando a: ${to} | From: ${from} | Subject: ${subject}`);
 
   const res = await fetch(RESEND_URL, {
     method: 'POST',
@@ -23,11 +32,29 @@ async function sendEmail(to: string, subject: string, html: string): Promise<voi
     body: JSON.stringify({ from, to: [to], subject, html }),
   });
 
+  const responseBody = await res.json().catch(() => ({}));
+
   if (!res.ok) {
-    const error = await res.json().catch(() => ({}));
-    console.error('[Resend Error]', res.status, error);
-    throw new Error(error.message || `Error al enviar email (${res.status})`);
+    console.error('[Resend Error]', {
+      status: res.status,
+      error: responseBody,
+      to,
+      from,
+    });
+
+    // Mensajes de error más claros
+    if (res.status === 403 || responseBody?.name === 'validation_error') {
+      console.error(
+        '[Resend] ⚠️  Posible causa: el dominio del remitente no está verificado en Resend.',
+        'Para emails a cualquier dirección, verificá el dominio en: https://resend.com/domains',
+        'O usá RESEND_FROM=onboarding@resend.dev para testing.',
+      );
+    }
+
+    throw new Error(responseBody.message || `Error al enviar email (${res.status})`);
   }
+
+  console.log(`[Email] ✅ Enviado exitosamente a: ${to} | ID: ${responseBody.id}`);
 }
 
 // ─────────────────────────────────────────────────────────────

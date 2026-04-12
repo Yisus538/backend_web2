@@ -8,7 +8,6 @@ import {
   unauthorized,
   forbidden,
   locked,
-  serverError,
   tooManyRequests,
 } from '@/lib/utils/api-response';
 
@@ -52,7 +51,16 @@ export async function POST(req: NextRequest) {
       return forbidden('Tu cuenta está deshabilitada. Contactá soporte.');
     }
     if (code === 'EMAIL_NOT_VERIFIED') {
-      return forbidden('Verificá tu correo electrónico antes de iniciar sesión.');
+      const parsedBody = parsed.data;
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          message: 'Verificá tu correo electrónico antes de iniciar sesión.',
+          code: 'EMAIL_NOT_VERIFIED',
+          data: { email: parsedBody.email },
+        }),
+        { status: 403, headers: { 'Content-Type': 'application/json' } },
+      );
     }
 
     const hint = detail ? ` (${detail} intentos restantes)` : '';
