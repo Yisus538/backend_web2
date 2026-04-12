@@ -14,8 +14,8 @@ generator client {
   binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
-datasource db {
-  provider = "postgresql"
+datasource: {
+  url: process.env["DATABASE_URL"],
 }
 // ================================================================
 // BLOQUE A: AUTENTICACIÓN Y USUARIOS
