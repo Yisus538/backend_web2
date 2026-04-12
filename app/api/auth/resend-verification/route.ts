@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import * as UserModel from '@/lib/models/user.model';
-import { generateResetToken } from '@/lib/utils/token.utils';
+import { generateToken, hashToken, getVerificationTokenExpiry } from '@/lib/utils/token.utils'; 
 import { sendVerificationEmail } from '@/lib/services/email.service';
 import { getAuthUser } from '@/lib/utils/auth.utils';
 import { ok, unauthorized, tooManyRequests } from '@/lib/utils/api-response';
@@ -30,11 +30,13 @@ export async function POST(req: NextRequest) {
     return tooManyRequests(`Esperá ${secondsLeft} segundos antes de reenviar.`);
   }
 
-  const verificationToken = generateResetToken();
-  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  // ✅ Flujo FASE 2 correcto
+  const rawToken = generateToken();
+  const tokenHash = hashToken(rawToken);
+  const expiresAt = getVerificationTokenExpiry();
 
-  await UserModel.saveVerificationToken(dbUser.id, verificationToken, expiresAt);
-  await sendVerificationEmail(dbUser.email, dbUser.fullName, verificationToken);
+  await UserModel.saveVerificationToken(dbUser.id, tokenHash, expiresAt);
+  await sendVerificationEmail(dbUser.email, dbUser.fullName, rawToken);
 
   resendCooldown.set(user.userId, now);
 

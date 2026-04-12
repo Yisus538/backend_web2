@@ -1,19 +1,24 @@
 import { NextRequest } from 'next/server';
 import * as UserModel from '@/lib/models/user.model';
+import { hashToken, isTokenValid } from '@/lib/utils/token.utils';
 import { ok, badRequest } from '@/lib/utils/api-response';
 
 // GET /api/auth/verify-email?token=xxxx
+
 export async function GET(req: NextRequest) {
-  const token = req.nextUrl.searchParams.get('token');
+  const rawToken = req.nextUrl.searchParams.get('token');
 
-  if (!token) return badRequest('Token requerido');
+  if (!rawToken) return badRequest('Token requerido');
 
-  // 👇 1. Agregamos el await aquí
-  const user = await UserModel.findByVerificationToken(token);
+  // Hashear el token recibido para comparar contra la DB
+  const tokenHash = hashToken(rawToken);
+
+  // Buscar por hash (campo nuevo, seguro)
+  const user = await UserModel.findByVerificationTokenHash(tokenHash);
 
   if (!user) return badRequest('El enlace de verificación es inválido');
 
-  if (user.verificationTokenExpiresAt && user.verificationTokenExpiresAt < new Date()) {
+  if (!isTokenValid(user.verificationTokenExpiresAt)) {
     return badRequest('El enlace expiró. Registrate nuevamente.');
   }
 
@@ -21,7 +26,7 @@ export async function GET(req: NextRequest) {
     return ok('Tu cuenta ya estaba verificada');
   }
 
-  // 👇 2. Agregamos el await aquí
+  // Marcar como verificado y limpiar ambos campos de token (viejo + hash)
   await UserModel.markEmailVerified(user.id);
 
   return ok('Cuenta verificada exitosamente. Ya podés iniciar sesión.');

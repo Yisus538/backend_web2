@@ -1,5 +1,4 @@
 import { NextRequest } from 'next/server';
-import { z } from 'zod';
 import * as authService from '@/lib/services/auth.service';
 import { registerSchema, formatZodErrors } from '@/lib/validations/auth.validations';
 import { registerLimiter } from '@/lib/utils/rate-limiter';

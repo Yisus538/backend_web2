@@ -1,7 +1,14 @@
 import * as UserModel from '../models/user.model';
+import * as NavModel  from '../models/nav.model';
 import { hashPassword, comparePassword, validatePasswordStrength } from '../utils/password.utils';
 import { generateTokens, verifyRefreshToken } from '../utils/jwt.utils';
-import { generateResetToken, getResetTokenExpiry, isResetTokenValid } from '../utils/token.utils';
+import {
+  generateToken,
+  hashToken,
+  getResetTokenExpiry,
+  getVerificationTokenExpiry,
+  isTokenValid,
+} from '../utils/token.utils';
 import { sendPasswordResetEmail, sendVerificationEmail } from './email.service';
 import { config } from '../config';
 import {
@@ -11,31 +18,29 @@ import {
   ResetPasswordDTO,
   AuthTokens,
   UserPublic,
-  UserRole
+  UserRole,
 } from '../types';
+import type { NavData } from '../models/nav.model';
 
-// ─────────────────────────────────────────────────────────────
-// Helpers internos
-// ─────────────────────────────────────────────────────────────
+// ─── Helper interno ───────────────────────────────────────────
 
-// Obtenemos el tipo real del usuario resolviendo la Promesa de Prisma
 type PrismaUser = NonNullable<Awaited<ReturnType<typeof UserModel.findById>>>;
 
 const toPublicUser = (user: PrismaUser): UserPublic => {
   if (!user) throw new Error('USER_NOT_FOUND');
   return {
-    id: user.id,
-    fullName: user.fullName,
-    email: user.email,
-    role: user.role as UserRole,
+    id:              user.id,
+    fullName:        user.fullName,
+    email:           user.email,
+    role:            user.role as UserRole,
     isEmailVerified: user.isEmailVerified,
-    createdAt: user.createdAt,
-    avatarUrl: user.avatarUrl,
+    createdAt:       user.createdAt,
+    avatarUrl:       user.avatarUrl,
   };
 };
 
 // ─────────────────────────────────────────────────────────────
-// Registro — pantalla "Crear tu cuenta"
+// Registro
 // ─────────────────────────────────────────────────────────────
 
 export const register = async (dto: RegisterDTO): Promise<UserPublic> => {
@@ -44,28 +49,26 @@ export const register = async (dto: RegisterDTO): Promise<UserPublic> => {
   }
 
   const existingUser = await UserModel.findByEmail(dto.email);
-  if (existingUser) {
-    throw new Error('EMAIL_TAKEN');
-  }
+  if (existingUser) throw new Error('EMAIL_TAKEN');
 
   const { valid, errors } = validatePasswordStrength(dto.password);
   if (!valid) throw new Error(`PASSWORD_WEAK:${errors.join('|')}`);
 
   const passwordHash = await hashPassword(dto.password);
-
   const user = await UserModel.createUser({
-    fullName: dto.fullName,
-    email: dto.email,
+    fullName:     dto.fullName,
+    email:        dto.email,
     passwordHash,
-    role: dto.role,
+    role:         dto.role,
   });
 
-  const verificationToken = generateResetToken();
-  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-  await UserModel.saveVerificationToken(user.id, verificationToken, expiresAt);
+  const rawToken = generateToken();
+  const tokenHash = hashToken(rawToken);
+  const expiresAt = getVerificationTokenExpiry();
 
-  // Mandar mail (no bloqueamos si falla)
-  sendVerificationEmail(user.email, user.fullName, verificationToken).catch(
+  await UserModel.saveVerificationToken(user.id, tokenHash, expiresAt);
+
+  sendVerificationEmail(user.email, user.fullName, rawToken).catch(
     (err) => console.error('[email] Error enviando verificación:', err),
   );
 
@@ -73,19 +76,17 @@ export const register = async (dto: RegisterDTO): Promise<UserPublic> => {
 };
 
 // ─────────────────────────────────────────────────────────────
-// Login — pantalla "Iniciar sesión"
+// Login — devuelve user + tokens + nav desde DB
 // ─────────────────────────────────────────────────────────────
 
 export const login = async (
   dto: LoginDTO,
-): Promise<{ user: UserPublic; tokens: AuthTokens }> => {
+): Promise<{ user: UserPublic; tokens: AuthTokens; nav: NavData }> => {
   const user = await UserModel.findByEmail(dto.email);
 
-  // Respuesta genérica: no revelar si el email existe o no
   if (!user) throw new Error('INVALID_CREDENTIALS');
   if (!user.isActive) throw new Error('ACCOUNT_DISABLED');
 
-  // Verificar si la cuenta está bloqueada por intentos fallidos
   if (user.lockedUntil && user.lockedUntil > new Date()) {
     const minutesLeft = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 60000);
     throw new Error(`ACCOUNT_LOCKED:${minutesLeft}`);
@@ -105,16 +106,25 @@ export const login = async (
       throw new Error(`ACCOUNT_LOCKED:${config.account.lockDurationMinutes}`);
     }
 
-    throw new Error(
-      `INVALID_CREDENTIALS:${config.account.maxFailedAttempts - attempts}`,
-    );
+    throw new Error(`INVALID_CREDENTIALS:${config.account.maxFailedAttempts - attempts}`);
   }
 
   await UserModel.resetFailedAttempts(user.id);
 
-  const tokens = generateTokens({ userId: user.id, email: user.email, role: user.role as UserRole });
+  if (!user.isEmailVerified) {
+    throw new Error('EMAIL_NOT_VERIFIED');
+  }
 
-  return { user: toPublicUser(user), tokens };
+  const tokens = generateTokens({
+    userId: user.id,
+    email:  user.email,
+    role:   user.role as UserRole,
+  });
+
+  // Obtener navegación desde DB para el rol del usuario
+  const nav = await NavModel.getNavForRole(user.role);
+
+  return { user: toPublicUser(user), tokens, nav };
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -133,25 +143,26 @@ export const refreshTokens = async (refreshToken: string): Promise<AuthTokens> =
 };
 
 // ─────────────────────────────────────────────────────────────
-// Olvidé mi contraseña — pantalla "¿Olvidaste tu contraseña?"
+// Forgot password
 // ─────────────────────────────────────────────────────────────
 
 export const forgotPassword = async (dto: ForgotPasswordDTO): Promise<void> => {
   const user = await UserModel.findByEmail(dto.email);
   if (!user || !user.isActive) return;
 
-  const resetToken = generateResetToken();
+  const rawToken = generateToken();
+  const tokenHash = hashToken(rawToken);
   const expiresAt = getResetTokenExpiry();
 
-  await UserModel.saveResetToken(user.id, resetToken, expiresAt);
-  
-  sendPasswordResetEmail(user.email, resetToken).catch(err =>
-    console.error('[forgotPassword] Error al enviar email:', err)
+  await UserModel.saveResetToken(user.id, tokenHash, expiresAt);
+
+  sendPasswordResetEmail(user.email, rawToken).catch((err) =>
+    console.error('[forgotPassword] Error al enviar email:', err),
   );
 };
 
 // ─────────────────────────────────────────────────────────────
-// Restablecer contraseña (con el token del email)
+// Reset password
 // ─────────────────────────────────────────────────────────────
 
 export const resetPassword = async (dto: ResetPasswordDTO): Promise<void> => {
@@ -159,10 +170,12 @@ export const resetPassword = async (dto: ResetPasswordDTO): Promise<void> => {
     throw new Error('PASSWORDS_DONT_MATCH');
   }
 
-  const user = await UserModel.findByResetToken(dto.token);
+  const tokenHash = hashToken(dto.token);
+  const user = await UserModel.findByResetTokenHash(tokenHash);
+
   if (!user) throw new Error('INVALID_RESET_TOKEN');
 
-  if (!isResetTokenValid(user.resetTokenExpiresAt)) {
+  if (!isTokenValid(user.resetTokenExpiresAt)) {
     throw new Error('EXPIRED_RESET_TOKEN');
   }
 
@@ -171,4 +184,23 @@ export const resetPassword = async (dto: ResetPasswordDTO): Promise<void> => {
 
   const passwordHash = await hashPassword(dto.newPassword);
   await UserModel.updatePassword(user.id, passwordHash);
+};
+
+// ─────────────────────────────────────────────────────────────
+// Reenviar email de verificación
+// ─────────────────────────────────────────────────────────────
+
+export const resendVerification = async (email: string): Promise<void> => {
+  const user = await UserModel.findByEmail(email);
+  if (!user || !user.isActive || user.isEmailVerified) return;
+
+  const rawToken = generateToken();
+  const tokenHash = hashToken(rawToken);
+  const expiresAt = getVerificationTokenExpiry();
+
+  await UserModel.saveVerificationToken(user.id, tokenHash, expiresAt);
+
+  sendVerificationEmail(user.email, user.fullName, rawToken).catch((err) =>
+    console.error('[resendVerification] Error al enviar email:', err),
+  );
 };

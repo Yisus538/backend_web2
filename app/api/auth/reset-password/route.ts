@@ -3,13 +3,13 @@ import * as authService from '@/lib/services/auth.service';
 import { resetPasswordSchema, formatZodErrors } from '@/lib/validations/auth.validations';
 import { badRequest, ok, serverError } from '@/lib/utils/api-response';
 
-// ─────────────────────────────────────────────────────────────
 // POST /api/auth/reset-password
-// Pantalla: Restablecer contraseña (llegó por el link del email)
-// ─────────────────────────────────────────────────────────────
+//
+// FASE 2: el token llega en texto plano desde el email.
+// El hashing ocurre dentro de authService.resetPassword()
+// usando hashToken() antes de buscar en DB.
 
 export async function POST(req: NextRequest) {
-
   let body: unknown;
   try {
     body = await req.json();
@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
     if (code === 'PASSWORD_WEAK') {
       return badRequest(
         'La contraseña no es segura',
-        detail?.split('|').map(m => ({ field: 'newPassword', message: m })),
+        detail?.split('|').map((m) => ({ field: 'newPassword', message: m })),
       );
     }
 

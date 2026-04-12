@@ -51,6 +51,9 @@ export async function POST(req: NextRequest) {
     if (code === 'ACCOUNT_DISABLED') {
       return forbidden('Tu cuenta está deshabilitada. Contactá soporte.');
     }
+    if (code === 'EMAIL_NOT_VERIFIED') {
+      return forbidden('Verificá tu correo electrónico antes de iniciar sesión.');
+    }
 
     const hint = detail ? ` (${detail} intentos restantes)` : '';
     return unauthorized(`Credenciales inválidas${hint}`);
