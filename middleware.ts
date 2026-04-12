@@ -6,7 +6,7 @@ const allowedOrigins = [
   'http://127.0.0.1:3000',
   'http://localhost:5173',
   'http://127.0.0.1:5173',
-  'https://frontendweb2-production.up.railway.app/#/login'
+  'https://frontendweb2-production.up.railway.app'
 ];
 
 export function middleware(req: NextRequest) {
