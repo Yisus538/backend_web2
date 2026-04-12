@@ -17,7 +17,7 @@ export function middleware(req: NextRequest) {
   if (req.method === 'OPTIONS') {
     return new NextResponse(null, {
       status: 204,
-      headers: {
+      headers: { 
         // Si el origin no está en la lista, no se expone el header — el browser bloquea la request
         ...(isAllowed && {
           'Access-Control-Allow-Origin': origin,
