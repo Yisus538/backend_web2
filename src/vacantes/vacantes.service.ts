@@ -1,0 +1,330 @@
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+} from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { CreateVacanteDto } from './dto/create-vacante.dto';
+import { UpdateVacanteDto } from './dto/update-vacante.dto';
+
+const PAGE_LIMIT_MAX = 100;
+
+// Réplica exacta del helper original (también presente en candidatos)
+function calcMatchScore(candidateSkills: string[], requisitos: any): number {
+  const techSkills: string[] = (requisitos?.techSkills ?? [])
+    .filter((s: any) => s.selected)
+    .map((s: any) => s.label.toLowerCase());
+  const softSkills: string[] = (requisitos?.softSkills ?? [])
+    .filter((s: any) => s.selected)
+    .map((s: any) => s.label.toLowerCase());
+  const allRequired = [...techSkills, ...softSkills];
+  if (allRequired.length === 0) return 75;
+  const lower   = candidateSkills.map((s) => s.toLowerCase());
+  const matches = allRequired.filter((r) => lower.includes(r));
+  return Math.round((matches.length / allRequired.length) * 100);
+}
+
+function formatSalary(amount: number | null): string {
+  if (!amount) return '';
+  if (amount >= 1_000_000) return `$${(amount / 1_000_000).toFixed(1)}M`;
+  if (amount >= 1_000)     return `$${Math.round(amount / 1_000)}K`;
+  return `$${amount}`;
+}
+
+function matchColor(score: number): string {
+  if (score >= 85) return 'green';
+  if (score >= 70) return 'blue';
+  return 'yellow';
+}
+
+const CATEGORY_ICON: Record<string, string> = {
+  tech: 'code',
+  mkt:  'campaign',
+  hr:   'group',
+};
+
+@Injectable()
+export class VacantesService {
+  constructor(private prisma: PrismaService) {}
+
+  // ────────────────────────────────────────────────────────────
+  // Helper: verifica empresa y auto-crea perfil si falta
+  // ────────────────────────────────────────────────────────────
+  private async ensureEmpresa(userId: string): Promise<string> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || user.role !== 'company') throw new ForbiddenException('NOT_EMPRESA');
+    const empresa = await this.prisma.empresa.findUnique({ where: { usuarioId: userId } });
+    if (!empresa) await this.prisma.empresa.create({ data: { usuarioId: userId } });
+    return userId; // empresaId === userId
+  }
+
+  // ────────────────────────────────────────────────────────────
+  // GET /api/vacantes  — lista vacantes propias de la empresa
+  // ────────────────────────────────────────────────────────────
+  async listar(
+    userId: string,
+    filters: { estado?: string; search?: string },
+    pagination: { page: number; limit: number },
+  ) {
+    const empresaId = await this.ensureEmpresa(userId);
+    const page  = Math.max(1, pagination.page);
+    const limit = Math.min(PAGE_LIMIT_MAX, Math.max(1, pagination.limit));
+    const skip  = (page - 1) * limit;
+
+    const where: any = { empresaId };
+    if (filters.estado) where.estado = filters.estado;
+    if (filters.search) {
+      where.OR = [
+        { titulo:      { contains: filters.search, mode: 'insensitive' } },
+        { descripcion: { contains: filters.search, mode: 'insensitive' } },
+      ];
+    }
+
+    const [items, total] = await Promise.all([
+      this.prisma.ofertaLaboral.findMany({
+        where,
+        skip,
+        take:    limit,
+        orderBy: { creadaEl: 'desc' },
+      }),
+      this.prisma.ofertaLaboral.count({ where }),
+    ]);
+
+    return {
+      items,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  // ────────────────────────────────────────────────────────────
+  // GET /api/vacantes/:id
+  // ────────────────────────────────────────────────────────────
+  async obtener(userId: string, id: string) {
+    const empresaId = await this.ensureEmpresa(userId);
+    const vacante   = await this.prisma.ofertaLaboral.findFirst({ where: { id, empresaId } });
+    if (!vacante) throw new NotFoundException('Vacante no encontrada');
+    return vacante;
+  }
+
+  // ────────────────────────────────────────────────────────────
+  // POST /api/vacantes
+  // ────────────────────────────────────────────────────────────
+  async crear(userId: string, dto: CreateVacanteDto) {
+    const empresaId = await this.ensureEmpresa(userId);
+    return this.prisma.ofertaLaboral.create({
+      data: {
+        empresaId,
+        titulo:            dto.titulo,
+        descripcion:       dto.descripcion,
+        estado:            dto.estado ?? 'borrador',
+        categoria:         dto.categoria,
+        modalidad:         dto.modalidad,
+        experienciaMinima: dto.experienciaMinima ?? 0,
+        salarioMin:        dto.salarioMin,
+        salarioMax:        dto.salarioMax,
+        requisitos:        dto.requisitos     as any,
+        matchingWeights:   dto.matchingWeights as any,
+      },
+    });
+  }
+
+  // ────────────────────────────────────────────────────────────
+  // PATCH /api/vacantes/:id  — actualización parcial
+  // ────────────────────────────────────────────────────────────
+  async actualizar(userId: string, id: string, dto: UpdateVacanteDto) {
+    const empresaId = await this.ensureEmpresa(userId);
+    const exists = await this.prisma.ofertaLaboral.findFirst({ where: { id, empresaId } });
+    if (!exists) throw new NotFoundException('Vacante no encontrada');
+
+    await this.prisma.ofertaLaboral.update({
+      where: { id },
+      data: {
+        ...(dto.titulo            !== undefined && { titulo:            dto.titulo }),
+        ...(dto.descripcion       !== undefined && { descripcion:       dto.descripcion }),
+        ...(dto.estado            !== undefined && { estado:            dto.estado }),
+        ...(dto.categoria         !== undefined && { categoria:         dto.categoria }),
+        ...(dto.modalidad         !== undefined && { modalidad:         dto.modalidad }),
+        ...(dto.experienciaMinima !== undefined && { experienciaMinima: dto.experienciaMinima }),
+        ...(dto.salarioMin        !== undefined && { salarioMin:        dto.salarioMin }),
+        ...(dto.salarioMax        !== undefined && { salarioMax:        dto.salarioMax }),
+        ...(dto.requisitos        !== undefined && { requisitos:        dto.requisitos     as any }),
+        ...(dto.matchingWeights   !== undefined && { matchingWeights:   dto.matchingWeights as any }),
+      },
+    });
+
+    return this.prisma.ofertaLaboral.findUnique({ where: { id } });
+  }
+
+  // ────────────────────────────────────────────────────────────
+  // PATCH /api/vacantes/:id  — solo cambio de estado
+  // ────────────────────────────────────────────────────────────
+  async cambiarEstado(userId: string, id: string, estado: string) {
+    const ESTADOS_VALIDOS = ['borrador', 'abierta', 'pausada', 'cerrada'];
+    if (!ESTADOS_VALIDOS.includes(estado)) {
+      throw new BadRequestException('Estado inválido');
+    }
+    const empresaId = await this.ensureEmpresa(userId);
+    const exists = await this.prisma.ofertaLaboral.findFirst({ where: { id, empresaId } });
+    if (!exists) throw new NotFoundException('Vacante no encontrada');
+    return this.prisma.ofertaLaboral.update({ where: { id }, data: { estado } });
+  }
+
+  // ────────────────────────────────────────────────────────────
+  // DELETE /api/vacantes/:id
+  // ────────────────────────────────────────────────────────────
+  async eliminar(userId: string, id: string) {
+    const empresaId = await this.ensureEmpresa(userId);
+    const vacante   = await this.prisma.ofertaLaboral.findFirst({
+      where:   { id, empresaId },
+      include: { _count: { select: { postulaciones: true } } },
+    });
+    if (!vacante) throw new NotFoundException('Vacante no encontrada');
+    if ((vacante as any)._count.postulaciones > 0) {
+      throw new BadRequestException('No se puede eliminar una vacante con postulaciones');
+    }
+    await this.prisma.ofertaLaboral.delete({ where: { id } });
+  }
+
+  // ────────────────────────────────────────────────────────────
+  // GET /api/vacantes/publicas  — candidatos
+  // ────────────────────────────────────────────────────────────
+  async publicas(userId: string, search?: string, page = 1, limit = 10) {
+    limit = Math.min(limit, 50);
+    const skip: number = (page - 1) * limit;
+    const where: any   = { estado: 'abierta' };
+
+    if (search) {
+      where.OR = [
+        { titulo:      { contains: search, mode: 'insensitive' } },
+        { descripcion: { contains: search, mode: 'insensitive' } },
+        { categoria:   { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    const [items, total] = await Promise.all([
+      this.prisma.ofertaLaboral.findMany({
+        where,
+        skip,
+        take:    limit,
+        orderBy: { creadaEl: 'desc' },
+        select: {
+          id: true, titulo: true, descripcion: true,
+          categoria: true, modalidad: true, experienciaMinima: true, creadaEl: true,
+          empresa: {
+            select: {
+              nombreEmpresa: true,
+              usuario:       { select: { ubicacion: true } },
+            },
+          },
+        },
+      }),
+      this.prisma.ofertaLaboral.count({ where }),
+    ]);
+
+    // Marcar cuáles ya tienen postulación de este candidato
+    const ofertaIds = items.map((i) => i.id);
+    const postulaciones = await this.prisma.postulacion.findMany({
+      where:  { candidatoId: userId, ofertaId: { in: ofertaIds } },
+      select: { ofertaId: true },
+    });
+    const aplicadas = new Set(postulaciones.map((p) => p.ofertaId));
+
+    const vacantes = items.map((v) => ({
+      id:          v.id,
+      titulo:      v.titulo,
+      descripcion: v.descripcion,
+      categoria:   v.categoria,
+      modalidad:   v.modalidad ?? 'Sin especificar',
+      empresa:     v.empresa?.nombreEmpresa ?? 'Empresa',
+      ubicacion:   v.empresa?.usuario?.ubicacion ?? 'Sin ubicación',
+      creadaEl:    v.creadaEl,
+      yaAplico:    aplicadas.has(v.id),
+    }));
+
+    return {
+      vacantes,
+      pagination: { total, page, limit, totalPages: Math.ceil(total / limit) },
+    };
+  }
+
+  // ────────────────────────────────────────────────────────────
+  // GET /api/vacantes/recomendadas  — candidatos con match score
+  // ────────────────────────────────────────────────────────────
+  async recomendadas(userId: string, limit = 6) {
+    limit = Math.min(limit, 20);
+
+    // 1. Habilidades del candidato
+    const habilidades = await this.prisma.candidatoHabilidad.findMany({
+      where:  { candidatoId: userId },
+      select: { habilidad: { select: { nombre: true } } },
+    });
+    const candidateSkills = habilidades.map((h) => h.habilidad.nombre);
+
+    // 2. IDs de ofertas donde ya se postuló
+    const postulaciones = await this.prisma.postulacion.findMany({
+      where:  { candidatoId: userId },
+      select: { ofertaId: true },
+    });
+    const appliedIds = postulaciones.map((p) => p.ofertaId);
+
+    // 3. Vacantes abiertas excluyendo las ya postuladas
+    const vacantes = await this.prisma.ofertaLaboral.findMany({
+      where: {
+        estado: 'abierta',
+        ...(appliedIds.length > 0 ? { id: { notIn: appliedIds } } : {}),
+      },
+      select: {
+        id:        true, titulo:    true, categoria: true,
+        modalidad: true, ubicacion: true,
+        salarioMin: true, salarioMax: true, requisitos: true,
+        empresa: {
+          select: {
+            nombreEmpresa: true,
+            usuario:       { select: { fullName: true } },
+          },
+        },
+      },
+    });
+
+    // 4. Calcular match score y ordenar
+    const scored = vacantes.map((v) => {
+      const req = v.requisitos as any;
+      const score =
+        candidateSkills.length > 0
+          ? calcMatchScore(candidateSkills, req)
+          : null;
+
+      const topSkills = ((req?.techSkills ?? []) as any[])
+        .filter((s) => s.selected)
+        .map((s) => s.label)
+        .slice(0, 4);
+
+      return {
+        id:         v.id,
+        icon:       CATEGORY_ICON[v.categoria ?? ''] ?? 'work',
+        title:      v.titulo,
+        company:    v.empresa.nombreEmpresa || v.empresa.usuario.fullName,
+        location:   v.ubicacion ?? v.modalidad ?? '',
+        skills:     topSkills,
+        salaryMin:  formatSalary(v.salarioMin),
+        salaryMax:  formatSalary(v.salarioMax),
+        matchScore: score,
+        matchColor: score != null ? matchColor(score) : 'blue',
+      };
+    });
+
+    // Ordenar: con score primero (desc), sin score al final
+    scored.sort((a, b) => {
+      if (a.matchScore == null && b.matchScore == null) return 0;
+      if (a.matchScore == null) return 1;
+      if (b.matchScore == null) return -1;
+      return b.matchScore - a.matchScore;
+    });
+
+    return { jobs: scored.slice(0, limit) };
+  }
+}
