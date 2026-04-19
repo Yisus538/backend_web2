@@ -19,11 +19,20 @@ import { CurrentUser, JwtPayload } from '../common/decorators/current-user.decor
 
 @Controller('postulaciones')
 @UseGuards(JwtAuthGuard, RolesGuard)
+// ✅ FIX: @Roles removido del nivel de clase.
+// Tenerlo aquí como 'candidate' hacía que el RolesGuard pudiera combinar
+// ambos roles (clase + método) en vez de que el método sobrescriba la clase,
+// bloqueando a usuarios 'company' en las rutas que los necesitan.
+// Cada método declara su propio @Roles explícitamente.
 export class PostulacionesController {
   constructor(private svc: PostulacionesService) {}
 
+  // ────────────────────────────────────────────────────────────
+  // GET /api/postulaciones/vacante/:vacanteId  — empresa: postulantes de una vacante
+  // IMPORTANTE: ruta estática antes del dinámico GET()
+  // ────────────────────────────────────────────────────────────
   @Get('vacante/:vacanteId')
-  @Roles('company')                        
+  @Roles('company')                        // ✅ solo empresa puede ver sus postulantes
   async listarPorVacante(
     @CurrentUser() u: JwtPayload,
     @Param('vacanteId') vacanteId: string,
