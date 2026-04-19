@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const core_1 = require("@nestjs/core");
 const common_1 = require("@nestjs/common");
+const cookieParser = require("cookie-parser");
 const app_module_1 = require("./app.module");
 const http_exception_filter_1 = require("./common/filters/http-exception.filter");
 const ALLOWED_ORIGINS = [
@@ -25,6 +26,7 @@ async function bootstrap() {
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
         allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
     });
+    app.use(cookieParser());
     app.useGlobalPipes(new common_1.ValidationPipe({
         whitelist: true,
         forbidNonWhitelisted: false,

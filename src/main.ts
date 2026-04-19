@@ -1,6 +1,7 @@
-import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
-import { AppModule } from './app.module';
+import { NestFactory }      from '@nestjs/core';
+import { ValidationPipe }  from '@nestjs/common';
+import * as cookieParser   from 'cookie-parser';
+import { AppModule }       from './app.module';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 
 const ALLOWED_ORIGINS = [
@@ -14,10 +15,8 @@ const ALLOWED_ORIGINS = [
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Prefijo global → /api/...  (mantiene compatibilidad 100% con el frontend)
   app.setGlobalPrefix('api');
 
-  // CORS — réplica exacta del middleware.ts original
   app.enableCors({
     origin: (origin, callback) => {
       if (!origin || ALLOWED_ORIGINS.includes(origin)) callback(null, true);
@@ -28,7 +27,9 @@ async function bootstrap() {
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   });
 
-  // Validación global
+  // Necesario para que NestJS pueda leer req.cookies en los controllers
+  app.use(cookieParser());
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist:            true,
@@ -38,7 +39,6 @@ async function bootstrap() {
     }),
   );
 
-  // Filtro global de excepciones → { ok, message, errors? }
   app.useGlobalFilters(new AllExceptionsFilter());
 
   const port = process.env.PORT || 3000;

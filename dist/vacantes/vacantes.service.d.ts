@@ -18,7 +18,7 @@ export declare class VacantesService {
             };
         } & {
             id: string;
-            empresaId: string;
+            ubicacion: string | null;
             titulo: string;
             descripcion: string;
             estado: string;
@@ -27,9 +27,9 @@ export declare class VacantesService {
             experienciaMinima: number;
             salarioMin: number | null;
             salarioMax: number | null;
-            ubicacion: string | null;
             requisitos: import("@prisma/client/runtime/library").JsonValue | null;
             matchingWeights: import("@prisma/client/runtime/library").JsonValue | null;
+            empresaId: string;
             creadaEl: Date;
             actualizadoEl: Date;
         })[];
@@ -40,7 +40,7 @@ export declare class VacantesService {
     }>;
     obtener(userId: string, id: string): Promise<{
         id: string;
-        empresaId: string;
+        ubicacion: string | null;
         titulo: string;
         descripcion: string;
         estado: string;
@@ -49,15 +49,15 @@ export declare class VacantesService {
         experienciaMinima: number;
         salarioMin: number | null;
         salarioMax: number | null;
-        ubicacion: string | null;
         requisitos: import("@prisma/client/runtime/library").JsonValue | null;
         matchingWeights: import("@prisma/client/runtime/library").JsonValue | null;
+        empresaId: string;
         creadaEl: Date;
         actualizadoEl: Date;
     }>;
     crear(userId: string, dto: CreateVacanteDto): Promise<{
         id: string;
-        empresaId: string;
+        ubicacion: string | null;
         titulo: string;
         descripcion: string;
         estado: string;
@@ -66,15 +66,15 @@ export declare class VacantesService {
         experienciaMinima: number;
         salarioMin: number | null;
         salarioMax: number | null;
-        ubicacion: string | null;
         requisitos: import("@prisma/client/runtime/library").JsonValue | null;
         matchingWeights: import("@prisma/client/runtime/library").JsonValue | null;
+        empresaId: string;
         creadaEl: Date;
         actualizadoEl: Date;
     }>;
     actualizar(userId: string, id: string, dto: UpdateVacanteDto): Promise<{
         id: string;
-        empresaId: string;
+        ubicacion: string | null;
         titulo: string;
         descripcion: string;
         estado: string;
@@ -83,15 +83,15 @@ export declare class VacantesService {
         experienciaMinima: number;
         salarioMin: number | null;
         salarioMax: number | null;
-        ubicacion: string | null;
         requisitos: import("@prisma/client/runtime/library").JsonValue | null;
         matchingWeights: import("@prisma/client/runtime/library").JsonValue | null;
+        empresaId: string;
         creadaEl: Date;
         actualizadoEl: Date;
     }>;
     cambiarEstado(userId: string, id: string, estado: string): Promise<{
         id: string;
-        empresaId: string;
+        ubicacion: string | null;
         titulo: string;
         descripcion: string;
         estado: string;
@@ -100,9 +100,9 @@ export declare class VacantesService {
         experienciaMinima: number;
         salarioMin: number | null;
         salarioMax: number | null;
-        ubicacion: string | null;
         requisitos: import("@prisma/client/runtime/library").JsonValue | null;
         matchingWeights: import("@prisma/client/runtime/library").JsonValue | null;
+        empresaId: string;
         creadaEl: Date;
         actualizadoEl: Date;
     }>;

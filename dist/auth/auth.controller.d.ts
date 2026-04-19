@@ -1,3 +1,4 @@
+import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { JwtPayload } from '../common/decorators/current-user.decorator';
 import { LoginDto } from './dto/login.dto';
@@ -8,7 +9,7 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 export declare class AuthController {
     private authService;
     constructor(authService: AuthService);
-    login(dto: LoginDto): Promise<{
+    login(dto: LoginDto, res: Response): Promise<{
         ok: boolean;
         message: string;
         data: {
@@ -20,10 +21,6 @@ export declare class AuthController {
                 isEmailVerified: any;
                 createdAt: any;
                 avatarUrl: any;
-            };
-            tokens: {
-                accessToken: string;
-                refreshToken: string;
             };
             nav: {
                 subtitle: string;
@@ -40,6 +37,10 @@ export declare class AuthController {
                 }[];
             };
         };
+    }>;
+    logout(res: Response): Promise<{
+        ok: boolean;
+        message: string;
     }>;
     register(dto: RegisterDto): Promise<{
         ok: boolean;
@@ -115,17 +116,11 @@ export declare class AuthController {
         ok: boolean;
         message: string;
     }>;
-    refresh(refreshToken: string): Promise<{
+    refresh(req: Request, res: Response): Promise<{
         ok: boolean;
         message: string;
-        data: {
-            tokens: {
-                accessToken: string;
-                refreshToken: string;
-            };
-        };
     }>;
-    resendVerification(email: string, req: any): Promise<{
+    resendVerification(email: string, req: Request): Promise<{
         ok: boolean;
         message: string;
     }>;

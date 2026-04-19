@@ -23,13 +23,43 @@ const register_dto_1 = require("./dto/register.dto");
 const forgot_password_dto_1 = require("./dto/forgot-password.dto");
 const reset_password_dto_1 = require("./dto/reset-password.dto");
 const update_profile_dto_1 = require("./dto/update-profile.dto");
+function cookieOptions(res) {
+    const isProd = process.env.NODE_ENV === 'production';
+    return {
+        base: {
+            httpOnly: true,
+            secure: isProd,
+            sameSite: isProd ? 'none' : 'lax',
+            path: '/',
+        },
+    };
+}
+function setAuthCookies(res, tokens) {
+    const { base } = cookieOptions(res);
+    res.cookie('accessToken', tokens.accessToken, { ...base, maxAge: 60 * 60 * 1000 });
+    res.cookie('refreshToken', tokens.refreshToken, { ...base, maxAge: 7 * 24 * 60 * 60 * 1000 });
+}
+function clearAuthCookies(res) {
+    const { base } = cookieOptions(res);
+    res.clearCookie('accessToken', base);
+    res.clearCookie('refreshToken', base);
+}
 let AuthController = class AuthController {
     constructor(authService) {
         this.authService = authService;
     }
-    async login(dto) {
+    async login(dto, res) {
         const result = await this.authService.login(dto);
-        return { ok: true, message: 'Sesión iniciada', data: result };
+        setAuthCookies(res, result.tokens);
+        return {
+            ok: true,
+            message: 'Sesión iniciada',
+            data: { user: result.user, nav: result.nav },
+        };
+    }
+    async logout(res) {
+        clearAuthCookies(res);
+        return { ok: true, message: 'Sesión cerrada' };
     }
     async register(dto) {
         const user = await this.authService.register(dto);
@@ -58,16 +88,19 @@ let AuthController = class AuthController {
         await this.authService.resetPassword(dto);
         return { ok: true, message: 'Contraseña restablecida exitosamente' };
     }
-    async refresh(refreshToken) {
+    async refresh(req, res) {
+        const refreshToken = req.cookies?.refreshToken;
+        if (!refreshToken)
+            throw new common_1.UnauthorizedException('No hay refresh token');
         const tokens = await this.authService.refreshTokens(refreshToken);
-        return { ok: true, message: 'Tokens renovados', data: { tokens } };
+        setAuthCookies(res, tokens);
+        return { ok: true, message: 'Tokens renovados' };
     }
     async resendVerification(email, req) {
         let userId;
         try {
-            const authHeader = req.headers['authorization'];
-            if (authHeader) {
-                const token = authHeader.split(' ')[1];
+            const token = req.cookies?.accessToken;
+            if (token) {
                 const jwt = require('jsonwebtoken');
                 const payload = jwt.verify(token, process.env.JWT_SECRET || 'dev_secret_change_in_production_min32chars');
                 userId = payload?.userId;
@@ -85,10 +118,19 @@ __decorate([
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
     (0, throttler_1.Throttle)({ default: { ttl: 900_000, limit: 5 } }),
     __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Res)({ passthrough: true })),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [login_dto_1.LoginDto]),
+    __metadata("design:paramtypes", [login_dto_1.LoginDto, Object]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "login", null);
+__decorate([
+    (0, common_1.Post)('logout'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    __param(0, (0, common_1.Res)({ passthrough: true })),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "logout", null);
 __decorate([
     (0, common_1.Post)('register'),
     (0, throttler_1.Throttle)({ default: { ttl: 900_000, limit: 5 } }),
@@ -142,16 +184,17 @@ __decorate([
 __decorate([
     (0, common_1.Post)('refresh'),
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
-    __param(0, (0, common_1.Body)('refreshToken')),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Res)({ passthrough: true })),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "refresh", null);
 __decorate([
     (0, common_1.Post)('resend-verification'),
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
     __param(0, (0, common_1.Body)('email')),
-    __param(1, (0, common_1.Request)()),
+    __param(1, (0, common_1.Req)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
