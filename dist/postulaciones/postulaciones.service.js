@@ -108,6 +108,53 @@ let PostulacionesService = class PostulacionesService {
             },
         });
     }
+    async listarPorVacante(empresaUserId, vacanteId) {
+        const oferta = await this.prisma.ofertaLaboral.findFirst({
+            where: { id: vacanteId, empresaId: empresaUserId },
+        });
+        if (!oferta)
+            throw new common_1.NotFoundException('Vacante no encontrada');
+        const rows = await this.prisma.postulacion.findMany({
+            where: { ofertaId: vacanteId },
+            orderBy: { creadaEl: 'desc' },
+            select: {
+                id: true,
+                estado: true,
+                creadaEl: true,
+                candidato: {
+                    select: {
+                        usuario: { select: { id: true, fullName: true, email: true } },
+                    },
+                },
+            },
+        });
+        return rows.map((p) => ({
+            id: p.id,
+            estado: p.estado,
+            creadaEl: p.creadaEl,
+            candidato: {
+                id: p.candidato.usuario.id,
+                fullName: p.candidato.usuario.fullName,
+                email: p.candidato.usuario.email,
+            },
+        }));
+    }
+    async actualizarEstado(empresaUserId, postulacionId, estado) {
+        const ESTADOS_VALIDOS = ['pendiente', 'revision', 'entrevista', 'finalista', 'contratado', 'rechazado', 'aceptado'];
+        if (!ESTADOS_VALIDOS.includes(estado)) {
+            throw new common_1.BadRequestException('Estado inválido');
+        }
+        const postulacion = await this.prisma.postulacion.findFirst({
+            where: { id: postulacionId, oferta: { empresaId: empresaUserId } },
+        });
+        if (!postulacion)
+            throw new common_1.NotFoundException('Postulación no encontrada');
+        return this.prisma.postulacion.update({
+            where: { id: postulacionId },
+            data: { estado },
+            select: { id: true, estado: true },
+        });
+    }
     async retirar(userId, id) {
         if (!id)
             throw new common_1.BadRequestException('id es requerido');

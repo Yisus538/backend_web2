@@ -12,9 +12,13 @@ export declare class VacantesService {
         page: number;
         limit: number;
     }): Promise<{
-        items: {
+        items: ({
+            _count: {
+                postulaciones: number;
+            };
+        } & {
             id: string;
-            ubicacion: string | null;
+            empresaId: string;
             titulo: string;
             descripcion: string;
             estado: string;
@@ -23,12 +27,12 @@ export declare class VacantesService {
             experienciaMinima: number;
             salarioMin: number | null;
             salarioMax: number | null;
+            ubicacion: string | null;
             requisitos: import("@prisma/client/runtime/library").JsonValue | null;
             matchingWeights: import("@prisma/client/runtime/library").JsonValue | null;
-            empresaId: string;
             creadaEl: Date;
             actualizadoEl: Date;
-        }[];
+        })[];
         total: number;
         page: number;
         limit: number;
@@ -36,7 +40,7 @@ export declare class VacantesService {
     }>;
     obtener(userId: string, id: string): Promise<{
         id: string;
-        ubicacion: string | null;
+        empresaId: string;
         titulo: string;
         descripcion: string;
         estado: string;
@@ -45,15 +49,15 @@ export declare class VacantesService {
         experienciaMinima: number;
         salarioMin: number | null;
         salarioMax: number | null;
+        ubicacion: string | null;
         requisitos: import("@prisma/client/runtime/library").JsonValue | null;
         matchingWeights: import("@prisma/client/runtime/library").JsonValue | null;
-        empresaId: string;
         creadaEl: Date;
         actualizadoEl: Date;
     }>;
     crear(userId: string, dto: CreateVacanteDto): Promise<{
         id: string;
-        ubicacion: string | null;
+        empresaId: string;
         titulo: string;
         descripcion: string;
         estado: string;
@@ -62,15 +66,15 @@ export declare class VacantesService {
         experienciaMinima: number;
         salarioMin: number | null;
         salarioMax: number | null;
+        ubicacion: string | null;
         requisitos: import("@prisma/client/runtime/library").JsonValue | null;
         matchingWeights: import("@prisma/client/runtime/library").JsonValue | null;
-        empresaId: string;
         creadaEl: Date;
         actualizadoEl: Date;
     }>;
     actualizar(userId: string, id: string, dto: UpdateVacanteDto): Promise<{
         id: string;
-        ubicacion: string | null;
+        empresaId: string;
         titulo: string;
         descripcion: string;
         estado: string;
@@ -79,15 +83,15 @@ export declare class VacantesService {
         experienciaMinima: number;
         salarioMin: number | null;
         salarioMax: number | null;
+        ubicacion: string | null;
         requisitos: import("@prisma/client/runtime/library").JsonValue | null;
         matchingWeights: import("@prisma/client/runtime/library").JsonValue | null;
-        empresaId: string;
         creadaEl: Date;
         actualizadoEl: Date;
     }>;
     cambiarEstado(userId: string, id: string, estado: string): Promise<{
         id: string;
-        ubicacion: string | null;
+        empresaId: string;
         titulo: string;
         descripcion: string;
         estado: string;
@@ -96,9 +100,9 @@ export declare class VacantesService {
         experienciaMinima: number;
         salarioMin: number | null;
         salarioMax: number | null;
+        ubicacion: string | null;
         requisitos: import("@prisma/client/runtime/library").JsonValue | null;
         matchingWeights: import("@prisma/client/runtime/library").JsonValue | null;
-        empresaId: string;
         creadaEl: Date;
         actualizadoEl: Date;
     }>;
@@ -135,5 +139,25 @@ export declare class VacantesService {
             matchScore: number;
             matchColor: string;
         }[];
+    }>;
+    publicaById(userId: string, id: string): Promise<{
+        id: string;
+        titulo: string;
+        descripcion: string;
+        categoria: string;
+        modalidad: string;
+        experienciaMinima: number;
+        requisitos: {
+            nombre: string;
+            nivel: string | null;
+            matched: boolean;
+        }[];
+        salario: string;
+        empresa: string;
+        ubicacion: string;
+        creadaEl: Date;
+        postulantes: number;
+        matchScore: number;
+        yaAplico: boolean;
     }>;
 }

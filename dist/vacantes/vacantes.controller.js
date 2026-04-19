@@ -28,6 +28,10 @@ let VacantesController = class VacantesController {
         const data = await this.svc.publicas(u.userId, search, +page, +limit);
         return { ok: true, message: 'Vacantes obtenidas', data };
     }
+    async publicaById(u, id) {
+        const data = await this.svc.publicaById(u.userId, id);
+        return { ok: true, message: 'Vacante obtenida', data: { vacante: data } };
+    }
     async recomendadas(u, limit = 6) {
         const data = await this.svc.recomendadas(u.userId, +limit);
         return { ok: true, message: 'Vacantes recomendadas', data };
@@ -83,6 +87,15 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], VacantesController.prototype, "publicas", null);
 __decorate([
+    (0, common_1.Get)('publicas/:id'),
+    (0, roles_decorator_1.Roles)('candidate'),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", Promise)
+], VacantesController.prototype, "publicaById", null);
+__decorate([
     (0, common_1.Get)('recomendadas'),
     (0, roles_decorator_1.Roles)('candidate'),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
@@ -105,6 +118,8 @@ __decorate([
 ], VacantesController.prototype, "listar", null);
 __decorate([
     (0, common_1.Post)(),
+    (0, roles_decorator_1.Roles)('company'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -123,7 +138,6 @@ __decorate([
 __decorate([
     (0, common_1.Patch)(':id'),
     (0, roles_decorator_1.Roles)('company'),
-    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
     __param(0, (0, current_user_decorator_1.CurrentUser)()),
     __param(1, (0, common_1.Param)('id')),
     __param(2, (0, common_1.Body)()),

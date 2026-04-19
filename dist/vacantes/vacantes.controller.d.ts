@@ -27,6 +27,32 @@ export declare class VacantesController {
             };
         };
     }>;
+    publicaById(u: JwtPayload, id: string): Promise<{
+        ok: boolean;
+        message: string;
+        data: {
+            vacante: {
+                id: string;
+                titulo: string;
+                descripcion: string;
+                categoria: string;
+                modalidad: string;
+                experienciaMinima: number;
+                requisitos: {
+                    nombre: string;
+                    nivel: string | null;
+                    matched: boolean;
+                }[];
+                salario: string;
+                empresa: string;
+                ubicacion: string;
+                creadaEl: Date;
+                postulantes: number;
+                matchScore: number;
+                yaAplico: boolean;
+            };
+        };
+    }>;
     recomendadas(u: JwtPayload, limit?: number): Promise<{
         ok: boolean;
         message: string;
@@ -49,9 +75,13 @@ export declare class VacantesController {
         ok: boolean;
         message: string;
         data: {
-            vacantes: {
+            vacantes: ({
+                _count: {
+                    postulaciones: number;
+                };
+            } & {
                 id: string;
-                ubicacion: string | null;
+                empresaId: string;
                 titulo: string;
                 descripcion: string;
                 estado: string;
@@ -60,12 +90,12 @@ export declare class VacantesController {
                 experienciaMinima: number;
                 salarioMin: number | null;
                 salarioMax: number | null;
+                ubicacion: string | null;
                 requisitos: import("@prisma/client/runtime/library").JsonValue | null;
                 matchingWeights: import("@prisma/client/runtime/library").JsonValue | null;
-                empresaId: string;
                 creadaEl: Date;
                 actualizadoEl: Date;
-            }[];
+            })[];
             pagination: {
                 total: number;
                 page: number;
@@ -80,7 +110,7 @@ export declare class VacantesController {
         data: {
             vacante: {
                 id: string;
-                ubicacion: string | null;
+                empresaId: string;
                 titulo: string;
                 descripcion: string;
                 estado: string;
@@ -89,9 +119,9 @@ export declare class VacantesController {
                 experienciaMinima: number;
                 salarioMin: number | null;
                 salarioMax: number | null;
+                ubicacion: string | null;
                 requisitos: import("@prisma/client/runtime/library").JsonValue | null;
                 matchingWeights: import("@prisma/client/runtime/library").JsonValue | null;
-                empresaId: string;
                 creadaEl: Date;
                 actualizadoEl: Date;
             };
@@ -103,7 +133,7 @@ export declare class VacantesController {
         data: {
             vacante: {
                 id: string;
-                ubicacion: string | null;
+                empresaId: string;
                 titulo: string;
                 descripcion: string;
                 estado: string;
@@ -112,9 +142,9 @@ export declare class VacantesController {
                 experienciaMinima: number;
                 salarioMin: number | null;
                 salarioMax: number | null;
+                ubicacion: string | null;
                 requisitos: import("@prisma/client/runtime/library").JsonValue | null;
                 matchingWeights: import("@prisma/client/runtime/library").JsonValue | null;
-                empresaId: string;
                 creadaEl: Date;
                 actualizadoEl: Date;
             };
@@ -126,7 +156,7 @@ export declare class VacantesController {
         data: {
             vacante: {
                 id: string;
-                ubicacion: string | null;
+                empresaId: string;
                 titulo: string;
                 descripcion: string;
                 estado: string;
@@ -135,9 +165,9 @@ export declare class VacantesController {
                 experienciaMinima: number;
                 salarioMin: number | null;
                 salarioMax: number | null;
+                ubicacion: string | null;
                 requisitos: import("@prisma/client/runtime/library").JsonValue | null;
                 matchingWeights: import("@prisma/client/runtime/library").JsonValue | null;
-                empresaId: string;
                 creadaEl: Date;
                 actualizadoEl: Date;
             };

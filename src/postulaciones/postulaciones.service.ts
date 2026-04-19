@@ -119,6 +119,63 @@ export class PostulacionesService {
   }
 
   // ────────────────────────────────────────────────────────────
+  // GET /api/postulaciones/vacante/:vacanteId  (empresa)
+  // ────────────────────────────────────────────────────────────
+  async listarPorVacante(empresaUserId: string, vacanteId: string) {
+    const oferta = await this.prisma.ofertaLaboral.findFirst({
+      where: { id: vacanteId, empresaId: empresaUserId },
+    });
+    if (!oferta) throw new NotFoundException('Vacante no encontrada');
+
+    const rows = await this.prisma.postulacion.findMany({
+      where:   { ofertaId: vacanteId },
+      orderBy: { creadaEl: 'desc' },
+      select: {
+        id:       true,
+        estado:   true,
+        creadaEl: true,
+        candidato: {
+          select: {
+            usuario: { select: { id: true, fullName: true, email: true } },
+          },
+        },
+      },
+    });
+
+    return rows.map((p) => ({
+      id:       p.id,
+      estado:   p.estado,
+      creadaEl: p.creadaEl,
+      candidato: {
+        id:       p.candidato.usuario.id,
+        fullName: p.candidato.usuario.fullName,
+        email:    p.candidato.usuario.email,
+      },
+    }));
+  }
+
+  // ────────────────────────────────────────────────────────────
+  // PATCH /api/postulaciones/:id/estado  (empresa)
+  // ────────────────────────────────────────────────────────────
+  async actualizarEstado(empresaUserId: string, postulacionId: string, estado: string) {
+    const ESTADOS_VALIDOS = ['pendiente', 'revision', 'entrevista', 'finalista', 'contratado', 'rechazado', 'aceptado'];
+    if (!ESTADOS_VALIDOS.includes(estado)) {
+      throw new BadRequestException('Estado inválido');
+    }
+
+    const postulacion = await this.prisma.postulacion.findFirst({
+      where: { id: postulacionId, oferta: { empresaId: empresaUserId } },
+    });
+    if (!postulacion) throw new NotFoundException('Postulación no encontrada');
+
+    return this.prisma.postulacion.update({
+      where:  { id: postulacionId },
+      data:   { estado },
+      select: { id: true, estado: true },
+    });
+  }
+
+  // ────────────────────────────────────────────────────────────
   // DELETE /api/postulaciones?id=xxx
   // ────────────────────────────────────────────────────────────
   async retirar(userId: string, id: string) {

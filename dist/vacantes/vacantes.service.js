@@ -81,6 +81,9 @@ let VacantesService = class VacantesService {
                 skip,
                 take: limit,
                 orderBy: { creadaEl: 'desc' },
+                include: {
+                    _count: { select: { postulaciones: true } },
+                },
             }),
             this.prisma.ofertaLaboral.count({ where }),
         ]);
@@ -276,6 +279,82 @@ let VacantesService = class VacantesService {
             return b.matchScore - a.matchScore;
         });
         return { jobs: scored.slice(0, limit) };
+    }
+    async publicaById(userId, id) {
+        const item = await this.prisma.ofertaLaboral.findFirst({
+            where: { id, estado: 'abierta' },
+            select: {
+                id: true,
+                titulo: true,
+                descripcion: true,
+                categoria: true,
+                modalidad: true,
+                experienciaMinima: true,
+                salarioMin: true,
+                salarioMax: true,
+                requisitos: true,
+                creadaEl: true,
+                empresa: {
+                    select: {
+                        nombreEmpresa: true,
+                        usuario: { select: { ubicacion: true } },
+                    },
+                },
+                _count: { select: { postulaciones: true } },
+            },
+        });
+        if (!item)
+            throw new common_1.NotFoundException('Vacante no encontrada o no disponible');
+        const postulacion = await this.prisma.postulacion.findUnique({
+            where: { ofertaId_candidatoId: { ofertaId: id, candidatoId: userId } },
+            select: { id: true },
+        });
+        const candidato = await this.prisma.candidato.findUnique({
+            where: { usuarioId: userId },
+            select: {
+                habilidades: {
+                    select: {
+                        habilidad: { select: { nombre: true } },
+                    },
+                },
+            },
+        });
+        const candidateSkills = (candidato?.habilidades ?? [])
+            .map((h) => h.habilidad.nombre);
+        const matchScore = calcMatchScore(candidateSkills, item.requisitos);
+        const req = item.requisitos;
+        const techSkills = (req?.techSkills ?? [])
+            .filter((s) => s.selected)
+            .map((s) => ({
+            nombre: s.label,
+            nivel: s.nivel ?? null,
+            matched: candidateSkills
+                .map((c) => c.toLowerCase())
+                .includes(s.label.toLowerCase()),
+        }));
+        let salario = null;
+        if (item.salarioMin && item.salarioMax) {
+            salario = `${formatSalary(item.salarioMin)} - ${formatSalary(item.salarioMax)}`;
+        }
+        else if (item.salarioMin) {
+            salario = `Desde ${formatSalary(item.salarioMin)}`;
+        }
+        return {
+            id: item.id,
+            titulo: item.titulo,
+            descripcion: item.descripcion,
+            categoria: item.categoria,
+            modalidad: item.modalidad ?? 'Sin especificar',
+            experienciaMinima: item.experienciaMinima,
+            requisitos: techSkills,
+            salario,
+            empresa: item.empresa?.nombreEmpresa ?? 'Empresa',
+            ubicacion: item.empresa?.usuario?.ubicacion ?? null,
+            creadaEl: item.creadaEl,
+            postulantes: item._count.postulaciones,
+            matchScore,
+            yaAplico: !!postulacion,
+        };
     }
 };
 exports.VacantesService = VacantesService;

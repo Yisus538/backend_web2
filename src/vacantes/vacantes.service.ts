@@ -87,6 +87,12 @@ export class VacantesService {
         skip,
         take:    limit,
         orderBy: { creadaEl: 'desc' },
+        // ✅ FIX: incluir conteo de postulaciones para que el frontend
+        // pueda mostrar el badge y habilitar el botón "Ver postulantes".
+        // Sin esto, vacante._count es undefined → postCount = 0 → botón oculto.
+        include: {
+          _count: { select: { postulaciones: true } },
+        },
       }),
       this.prisma.ofertaLaboral.count({ where }),
     ]);
@@ -326,5 +332,97 @@ export class VacantesService {
     });
 
     return { jobs: scored.slice(0, limit) };
+  }
+  // ────────────────────────────────────────────────────────────
+  // GET /api/vacantes/publicas/:id  — candidato: detalle        🆕
+  // Devuelve info completa de una vacante abierta, incluyendo
+  // requisitos formateados y si el candidato ya aplicó.
+  // ────────────────────────────────────────────────────────────
+  async publicaById(userId: string, id: string) {
+    const item = await this.prisma.ofertaLaboral.findFirst({
+      where: { id, estado: 'abierta' },
+      select: {
+        id:                true,
+        titulo:            true,
+        descripcion:       true,
+        categoria:         true,
+        modalidad:         true,
+        experienciaMinima: true,
+        salarioMin:        true,
+        salarioMax:        true,
+        requisitos:        true,
+        creadaEl:          true,
+        empresa: {
+          select: {
+            nombreEmpresa: true,
+            usuario: { select: { ubicacion: true } },
+          },
+        },
+        _count: { select: { postulaciones: true } },
+      },
+    });
+
+    if (!item) throw new NotFoundException('Vacante no encontrada o no disponible');
+
+    // ── ¿Ya aplicó este candidato? ───────────────────────────
+    const postulacion = await this.prisma.postulacion.findUnique({
+      where: { ofertaId_candidatoId: { ofertaId: id, candidatoId: userId } },
+      select: { id: true },
+    });
+
+    // ── Habilidades del candidato para calcular match ────────
+    const candidato = await this.prisma.candidato.findUnique({
+      where: { usuarioId: userId },
+      select: {
+        habilidades: {
+          select: {
+            habilidad: { select: { nombre: true } },
+          },
+        },
+      },
+    });
+    const candidateSkills: string[] = (candidato?.habilidades ?? [])
+      .map((h) => h.habilidad.nombre);
+
+    // ── Match score ──────────────────────────────────────────
+    const matchScore = calcMatchScore(candidateSkills, item.requisitos);
+
+    // ── Formatear requisitos técnicos para la UI ─────────────
+    const req = item.requisitos as any;
+    const techSkills: { nombre: string; nivel: string | null; matched: boolean }[] =
+      (req?.techSkills ?? [])
+        .filter((s: any) => s.selected)
+        .map((s: any) => ({
+          nombre:  s.label,
+          nivel:   s.nivel ?? null,
+          matched: candidateSkills
+            .map((c) => c.toLowerCase())
+            .includes(s.label.toLowerCase()),
+        }));
+
+    // ── Salario legible ──────────────────────────────────────
+    let salario: string | null = null;
+    if (item.salarioMin && item.salarioMax) {
+      salario = `${formatSalary(item.salarioMin)} - ${formatSalary(item.salarioMax)}`;
+    } else if (item.salarioMin) {
+      salario = `Desde ${formatSalary(item.salarioMin)}`;
+    }
+
+    return {
+      id:                item.id,
+      titulo:            item.titulo,
+      descripcion:       item.descripcion,
+      categoria:         item.categoria,
+      modalidad:         item.modalidad ?? 'Sin especificar',
+      experienciaMinima: item.experienciaMinima,
+      requisitos:        techSkills,
+      salario,
+      empresa:           item.empresa?.nombreEmpresa ?? 'Empresa',
+      ubicacion:         item.empresa?.usuario?.ubicacion ?? null,
+      creadaEl:          item.creadaEl,
+      postulantes:       item._count.postulaciones,
+      matchScore,
+      yaAplico:          !!postulacion,
+    };
   }
 }

@@ -3,6 +3,28 @@ import { JwtPayload } from '../common/decorators/current-user.decorator';
 export declare class PostulacionesController {
     private svc;
     constructor(svc: PostulacionesService);
+    listarPorVacante(u: JwtPayload, vacanteId: string): Promise<{
+        ok: boolean;
+        message: string;
+        data: {
+            id: string;
+            estado: string;
+            creadaEl: Date;
+            candidato: {
+                id: string;
+                fullName: string;
+                email: string;
+            };
+        }[];
+    }>;
+    actualizarEstado(u: JwtPayload, id: string, estado: string): Promise<{
+        ok: boolean;
+        message: string;
+        data: {
+            id: string;
+            estado: string;
+        };
+    }>;
     listar(u: JwtPayload, estado?: string): Promise<{
         ok: boolean;
         message: string;

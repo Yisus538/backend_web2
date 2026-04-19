@@ -2,8 +2,10 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Delete,
   Body,
+  Param,
   Query,
   UseGuards,
   HttpCode,
@@ -17,14 +19,38 @@ import { CurrentUser, JwtPayload } from '../common/decorators/current-user.decor
 
 @Controller('postulaciones')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('candidate')
 export class PostulacionesController {
   constructor(private svc: PostulacionesService) {}
+
+  @Get('vacante/:vacanteId')
+  @Roles('company')                        
+  async listarPorVacante(
+    @CurrentUser() u: JwtPayload,
+    @Param('vacanteId') vacanteId: string,
+  ) {
+    const data = await this.svc.listarPorVacante(u.userId, vacanteId);
+    return { ok: true, message: 'Postulantes obtenidos', data };
+  }
+
+  // ────────────────────────────────────────────────────────────
+  // PATCH /api/postulaciones/:id/estado  — empresa: actualiza estado
+  // ────────────────────────────────────────────────────────────
+  @Patch(':id/estado')
+  @Roles('company')                        // ✅ solo empresa puede cambiar estado
+  async actualizarEstado(
+    @CurrentUser() u: JwtPayload,
+    @Param('id') id: string,
+    @Body('estado') estado: string,
+  ) {
+    const data = await this.svc.actualizarEstado(u.userId, id, estado);
+    return { ok: true, message: 'Estado actualizado', data };
+  }
 
   // ────────────────────────────────────────────────────────────
   // GET /api/postulaciones?estado=en-curso
   // ────────────────────────────────────────────────────────────
   @Get()
+  @Roles('candidate')                      // ✅ solo candidato ve sus candidaturas
   async listar(
     @CurrentUser() u: JwtPayload,
     @Query('estado') estado?: string,
@@ -37,6 +63,7 @@ export class PostulacionesController {
   // POST /api/postulaciones
   // ────────────────────────────────────────────────────────────
   @Post()
+  @Roles('candidate')                      // ✅ solo candidato puede postularse
   @HttpCode(HttpStatus.CREATED)
   async crear(
     @CurrentUser() u: JwtPayload,
@@ -52,9 +79,9 @@ export class PostulacionesController {
 
   // ────────────────────────────────────────────────────────────
   // DELETE /api/postulaciones?id=xxx
-  // Mismo contrato que el route.ts original (query param, no path param)
   // ────────────────────────────────────────────────────────────
   @Delete()
+  @Roles('candidate')                      // ✅ solo candidato puede retirar su postulación
   @HttpCode(HttpStatus.OK)
   async retirar(
     @CurrentUser() u: JwtPayload,

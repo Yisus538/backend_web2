@@ -25,5 +25,19 @@ export declare class PostulacionesService {
             titulo: string;
         };
     }>;
+    listarPorVacante(empresaUserId: string, vacanteId: string): Promise<{
+        id: string;
+        estado: string;
+        creadaEl: Date;
+        candidato: {
+            id: string;
+            fullName: string;
+            email: string;
+        };
+    }[]>;
+    actualizarEstado(empresaUserId: string, postulacionId: string, estado: string): Promise<{
+        id: string;
+        estado: string;
+    }>;
     retirar(userId: string, id: string): Promise<void>;
 }
