@@ -13,15 +13,14 @@ import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
-    // ── Variables de entorno ──
     ConfigModule.forRoot({ isGlobal: true }),
 
-    // ── Rate limiting global (5 req / 15 min por IP) ──
+
     ThrottlerModule.forRoot([
       {
         name: 'default',
-        ttl: 900_000,  // 15 minutos en ms
-        limit: 100,    // límite general (los endpoints críticos tienen su propia guard)
+        ttl: 900_000, 
+        limit: 100,    
       },
     ]),
 

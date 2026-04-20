@@ -11,8 +11,7 @@
     "start:dev": "tsc -p tsconfig.build.json && node --watch dist/main.js",
     "start:debug": "nest start --debug --watch",
     "start:prod": "prisma migrate deploy && node dist/main",
-    "lint": "eslint \"{src,apps,libs,test}/**/*.ts\"",
-    "seed": "tsx prisma/seed.ts"
+    "lint": "eslint \"{src,apps,libs,test}/**/*.ts\""
   },
   "dependencies": {
     "@nestjs/common": "^10.3.0",
@@ -42,6 +41,9 @@
     "sharp": "^0.34.5",
     "uuid": "^10.0.0"
   },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
+  },
   "devDependencies": {
     "@nestjs/cli": "^10.4.9",
     "@nestjs/schematics": "^10.1.1",
@@ -53,6 +55,7 @@
     "@types/pg": "^8.20.0",
     "@types/sharp": "^0.31.1",
     "@types/uuid": "^10.0.0",
+    "ts-node": "^10.9.2",
     "tsx": "^4.21.0",
     "typescript": "^5.5.3"
   }
