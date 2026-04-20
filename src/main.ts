@@ -22,7 +22,8 @@ async function bootstrap() {
   app.enableCors({
     origin: (origin, callback) => {
       if (!origin || ALLOWED_ORIGINS.includes(origin)) callback(null, true);
-      else callback(null, false);
+      else callback(new Error(`CORS bloqueado: ${origin}`), false);
+
     },
     credentials:    true,
     methods:        ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
