@@ -77,7 +77,7 @@ export class AuthController {
     return {
       ok:      true,
       message: 'Sesión iniciada',
-      data:    { user: result.user, nav: result.nav },
+      data:    { user: result.user, nav: result.nav, accessToken: result.tokens.accessToken },
     };
   }
 
