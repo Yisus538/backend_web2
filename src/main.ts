@@ -1,4 +1,5 @@
-import { NestFactory }      from '@nestjs/core';
+import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { ValidationPipe }  from '@nestjs/common';
 import * as cookieParser   from 'cookie-parser';
 import { AppModule }       from './app.module';
@@ -13,7 +14,8 @@ const ALLOWED_ORIGINS = [
 ];
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  app.set('trust proxy', 1);
 
   app.setGlobalPrefix('api');
 
