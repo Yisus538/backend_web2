@@ -3,6 +3,7 @@ import {
   BadRequestException,
   ConflictException,
   NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -24,6 +25,71 @@ function calcMatchScore(candidateSkills: string[], requisitos: any): number {
 @Injectable()
 export class CandidatosService {
   constructor(private prisma: PrismaService) {}
+
+  // ────────────────────────────────────────────────────────────
+  // GET /api/candidatos/:id  — empresa ve perfil público de candidato + cvUrl
+  // ────────────────────────────────────────────────────────────
+  async getPerfilPublico(companyId: string, candidatoId: string) {
+    const user = await this.prisma.user.findFirst({
+      where: { id: candidatoId, role: 'candidate', isActive: true },
+      select: {
+        id:        true,
+        fullName:  true,
+        email:     true,
+        avatarUrl: true,
+        titulo:    true,
+        ubicacion: true,
+        candidato: {
+          select: {
+            biografia: true,
+            habilidades: {
+              select: {
+                nivel:    true,
+                aniosExp: true,
+                habilidad: { select: { nombre: true } },
+              },
+              orderBy: { aniosExp: 'desc' },
+            },
+            idiomas:    { orderBy: { creadaEl: 'asc' } },
+            experiencia: { orderBy: { fechaInicio: 'desc' } },
+            educacion:   { orderBy: { fechaInicio: 'desc' } },
+          },
+        },
+      },
+    });
+
+    if (!user) throw new NotFoundException('Candidato no encontrado');
+
+    // Buscar cvUrl: postulación más reciente de este candidato a una vacante de esta empresa
+    const postulacion = await this.prisma.postulacion.findFirst({
+      where: {
+        candidatoId: candidatoId,
+        oferta: { empresaId: companyId },
+      },
+      select: { urlCv: true },
+      orderBy: { creadaEl: 'desc' },
+    });
+
+    const skills = user.candidato?.habilidades ?? [];
+    const skillNames = skills.map((h) => h.habilidad.nombre);
+    const totalExp = skills.reduce((max, h) => Math.max(max, h.aniosExp ?? 0), 0);
+
+    return {
+      id:         user.id,
+      name:       user.fullName,
+      email:      user.email,
+      avatar:     user.avatarUrl ?? null,
+      role:       user.titulo ?? 'Candidato',
+      location:   user.ubicacion ?? '',
+      biografia:  user.candidato?.biografia ?? null,
+      experience: totalExp > 0 ? `${totalExp} años` : 'Sin experiencia registrada',
+      skills:     skillNames,
+      idiomas:    user.candidato?.idiomas   ?? [],
+      educacion:  user.candidato?.educacion ?? [],
+      experiencia: user.candidato?.experiencia ?? [],
+      cvUrl:      postulacion?.urlCv ?? null,
+    };
+  }
 
   // ────────────────────────────────────────────────────────────
   // GET /api/candidatos  — empresas ven candidatos

@@ -5,6 +5,7 @@ import {
   Patch,
   Delete,
   Body,
+  Param,
   Query,
   UseGuards,
   HttpCode,
@@ -142,5 +143,16 @@ export class CandidatosController {
   async deleteEducacion(@CurrentUser() u: JwtPayload, @Query('id') id: string) {
     await this.svc.deleteEducacion(u.userId, id);
     return { ok: true, message: 'Educación eliminada' };
+  }
+
+  // ────────────────────────────────────────────────────────────
+  // GET /api/candidatos/:id  — empresa ve perfil público + cvUrl
+  // Va al final para que las rutas específicas (/habilidades, etc.) tengan prioridad
+  // ────────────────────────────────────────────────────────────
+  @Get(':id')
+  @Roles('company')
+  async getPerfilPublico(@CurrentUser() u: JwtPayload, @Param('id') id: string) {
+    const data = await this.svc.getPerfilPublico(u.userId, id);
+    return { ok: true, message: 'Perfil obtenido', data };
   }
 }
