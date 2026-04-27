@@ -21,7 +21,7 @@ async function bootstrap() {
             if (!origin || ALLOWED_ORIGINS.includes(origin))
                 callback(null, true);
             else
-                callback(null, false);
+                callback(new Error(`CORS bloqueado: ${origin}`), false);
         },
         credentials: true,
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
