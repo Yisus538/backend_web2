@@ -30,6 +30,63 @@ let CandidatosService = class CandidatosService {
     constructor(prisma) {
         this.prisma = prisma;
     }
+    async getPerfilPublico(companyId, candidatoId) {
+        const user = await this.prisma.user.findFirst({
+            where: { id: candidatoId, role: 'candidate', isActive: true },
+            select: {
+                id: true,
+                fullName: true,
+                email: true,
+                avatarUrl: true,
+                titulo: true,
+                ubicacion: true,
+                candidato: {
+                    select: {
+                        biografia: true,
+                        habilidades: {
+                            select: {
+                                nivel: true,
+                                aniosExp: true,
+                                habilidad: { select: { nombre: true } },
+                            },
+                            orderBy: { aniosExp: 'desc' },
+                        },
+                        idiomas: { orderBy: { creadaEl: 'asc' } },
+                        experiencia: { orderBy: { fechaInicio: 'desc' } },
+                        educacion: { orderBy: { fechaInicio: 'desc' } },
+                    },
+                },
+            },
+        });
+        if (!user)
+            throw new common_1.NotFoundException('Candidato no encontrado');
+        const postulacion = await this.prisma.postulacion.findFirst({
+            where: {
+                candidatoId: candidatoId,
+                oferta: { empresaId: companyId },
+            },
+            select: { urlCv: true },
+            orderBy: { creadaEl: 'desc' },
+        });
+        const skills = user.candidato?.habilidades ?? [];
+        const skillNames = skills.map((h) => h.habilidad.nombre);
+        const totalExp = skills.reduce((max, h) => Math.max(max, h.aniosExp ?? 0), 0);
+        return {
+            id: user.id,
+            name: user.fullName,
+            email: user.email,
+            avatar: user.avatarUrl ?? null,
+            role: user.titulo ?? 'Candidato',
+            location: user.ubicacion ?? '',
+            biografia: user.candidato?.biografia ?? null,
+            experience: totalExp > 0 ? `${totalExp} años` : 'Sin experiencia registrada',
+            skills: skillNames,
+            idiomas: user.candidato?.idiomas ?? [],
+            educacion: user.candidato?.educacion ?? [],
+            experiencia: user.candidato?.experiencia ?? [],
+            cvUrl: postulacion?.urlCv ?? null,
+        };
+    }
     async listar(userId, q) {
         const search = (q.search ?? '');
         const vacanteId = (q.vacanteId ?? null);

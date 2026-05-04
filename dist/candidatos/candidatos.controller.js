@@ -79,6 +79,10 @@ let CandidatosController = class CandidatosController {
         await this.svc.deleteEducacion(u.userId, id);
         return { ok: true, message: 'Educación eliminada' };
     }
+    async getPerfilPublico(u, id) {
+        const data = await this.svc.getPerfilPublico(u.userId, id);
+        return { ok: true, message: 'Perfil obtenido', data };
+    }
 };
 exports.CandidatosController = CandidatosController;
 __decorate([
@@ -212,6 +216,15 @@ __decorate([
     __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], CandidatosController.prototype, "deleteEducacion", null);
+__decorate([
+    (0, common_1.Get)(':id'),
+    (0, roles_decorator_1.Roles)('company'),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", Promise)
+], CandidatosController.prototype, "getPerfilPublico", null);
 exports.CandidatosController = CandidatosController = __decorate([
     (0, common_1.Controller)('candidatos'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),

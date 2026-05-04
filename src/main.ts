@@ -1,8 +1,8 @@
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import { ValidationPipe }  from '@nestjs/common';
-import * as cookieParser   from 'cookie-parser';
-import { AppModule }       from './app.module';
+import { ValidationPipe } from '@nestjs/common';
+import * as cookieParser from 'cookie-parser';
+import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 
 const ALLOWED_ORIGINS = [
@@ -25,8 +25,8 @@ async function bootstrap() {
       else callback(new Error(`CORS bloqueado: ${origin}`), false);
 
     },
-    credentials:    true,
-    methods:        ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   });
 
@@ -35,16 +35,17 @@ async function bootstrap() {
 
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist:            true,
+      whitelist: true,
       forbidNonWhitelisted: false,
-      transform:            true,
-      transformOptions:     { enableImplicitConversion: true },
+      transform: true,
+      transformOptions: { enableImplicitConversion: true },
     }),
   );
 
   app.useGlobalFilters(new AllExceptionsFilter());
 
   const port = process.env.PORT || 3000;
+  app.enableShutdownHooks();
   await app.listen(port, '0.0.0.0');
   console.log(`\n  🚀  ReclutaIA NestJS\n  Local:  http://localhost:${port}/api\n  Health: http://localhost:${port}/api/health\n`);
 }

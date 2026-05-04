@@ -36,6 +36,7 @@ async function bootstrap() {
     }));
     app.useGlobalFilters(new http_exception_filter_1.AllExceptionsFilter());
     const port = process.env.PORT || 3000;
+    app.enableShutdownHooks();
     await app.listen(port, '0.0.0.0');
     console.log(`\n  🚀  ReclutaIA NestJS\n  Local:  http://localhost:${port}/api\n  Health: http://localhost:${port}/api/health\n`);
 }

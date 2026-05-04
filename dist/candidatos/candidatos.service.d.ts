@@ -2,6 +2,52 @@ import { PrismaService } from '../prisma/prisma.service';
 export declare class CandidatosService {
     private prisma;
     constructor(prisma: PrismaService);
+    getPerfilPublico(companyId: string, candidatoId: string): Promise<{
+        id: string;
+        name: string;
+        email: string;
+        avatar: string;
+        role: string;
+        location: string;
+        biografia: string;
+        experience: string;
+        skills: string[];
+        idiomas: {
+            idioma: string;
+            id: string;
+            creadaEl: Date;
+            candidatoId: string;
+            nivel: string;
+            certificacion: string | null;
+        }[];
+        educacion: {
+            id: string;
+            titulo: string;
+            descripcion: string | null;
+            creadaEl: Date;
+            actualizadoEl: Date;
+            candidatoId: string;
+            fechaInicio: string;
+            fechaFin: string | null;
+            institucion: string;
+            campo: string | null;
+            cursando: boolean;
+        }[];
+        experiencia: {
+            empresa: string;
+            id: string;
+            descripcion: string | null;
+            modalidad: string | null;
+            creadaEl: Date;
+            actualizadoEl: Date;
+            candidatoId: string;
+            fechaInicio: string;
+            cargo: string;
+            fechaFin: string | null;
+            actual: boolean;
+        }[];
+        cvUrl: string;
+    }>;
     listar(userId: string, q: any): Promise<{
         candidatos: {
             id: string;
@@ -66,8 +112,8 @@ export declare class CandidatosService {
         creadaEl: Date;
         actualizadoEl: Date;
         candidatoId: string;
-        cargo: string;
         fechaInicio: string;
+        cargo: string;
         fechaFin: string | null;
         actual: boolean;
     }[]>;
@@ -79,8 +125,8 @@ export declare class CandidatosService {
         creadaEl: Date;
         actualizadoEl: Date;
         candidatoId: string;
-        cargo: string;
         fechaInicio: string;
+        cargo: string;
         fechaFin: string | null;
         actual: boolean;
     }>;
@@ -92,8 +138,8 @@ export declare class CandidatosService {
         creadaEl: Date;
         actualizadoEl: Date;
         candidatoId: string;
-        cargo: string;
         fechaInicio: string;
+        cargo: string;
         fechaFin: string | null;
         actual: boolean;
     }>;

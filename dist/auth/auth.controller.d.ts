@@ -67,11 +67,11 @@ export declare class AuthController {
                 email: string;
                 fullName: string;
                 role: string;
-                isEmailVerified: boolean;
-                avatarUrl: string;
                 telefono: string;
                 ubicacion: string;
                 titulo: string;
+                avatarUrl: string;
+                isEmailVerified: boolean;
             };
             nav: {
                 subtitle: string;
@@ -98,10 +98,10 @@ export declare class AuthController {
                 email: string;
                 fullName: string;
                 role: string;
-                avatarUrl: string;
                 telefono: string;
                 ubicacion: string;
                 titulo: string;
+                avatarUrl: string;
             };
         };
     }>;
