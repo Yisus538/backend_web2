@@ -15,14 +15,25 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.CvController = void 0;
 const common_1 = require("@nestjs/common");
 const platform_express_1 = require("@nestjs/platform-express");
+const jwt_auth_guard_1 = require("../common/guards/jwt-auth.guard");
+const current_user_decorator_1 = require("../common/decorators/current-user.decorator");
+const cv_service_1 = require("./cv.service");
 const MAKE_WEBHOOK_URL = 'https://hook.us2.make.com/r7dc3o8jguw9t7olo1byd40knnfco6ks';
 const MAKE_API_KEY = 'jitKx-t9QAJBR2_';
 let CvController = class CvController {
+    constructor(cvService) {
+        this.cvService = cvService;
+    }
     async analyze(file) {
         if (!file)
             throw new common_1.BadRequestException('No se recibió el archivo del CV');
         this.sendToMake(file).catch(err => console.error('[cv/analyze] Error enviando a Make.com:', err));
         return { ok: true, message: 'CV recibido, procesando...' };
+    }
+    async getAnalisis(candidatoId, user) {
+        const id = candidatoId || user.userId;
+        const data = await this.cvService.getAnalisis(id);
+        return { ok: true, data };
     }
     async sendToMake(file) {
         const boundary = `----FormBoundary${Date.now()}`;
@@ -50,7 +61,17 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], CvController.prototype, "analyze", null);
+__decorate([
+    (0, common_1.Get)('analisis'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Query)('candidatoId')),
+    __param(1, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], CvController.prototype, "getAnalisis", null);
 exports.CvController = CvController = __decorate([
-    (0, common_1.Controller)('cv')
+    (0, common_1.Controller)('cv'),
+    __metadata("design:paramtypes", [cv_service_1.CvService])
 ], CvController);
 //# sourceMappingURL=cv.controller.js.map

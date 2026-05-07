@@ -1,19 +1,26 @@
 import {
   Controller,
+  Get,
   Post,
+  Query,
   UploadedFile,
   UseInterceptors,
+  UseGuards,
   BadRequestException,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { CurrentUser, JwtPayload } from '../common/decorators/current-user.decorator';
+import { CvService } from './cv.service';
 
 const MAKE_WEBHOOK_URL = 'https://hook.us2.make.com/r7dc3o8jguw9t7olo1byd40knnfco6ks';
 const MAKE_API_KEY     = 'jitKx-t9QAJBR2_';
 
 @Controller('cv')
 export class CvController {
+  constructor(private readonly cvService: CvService) {}
 
   @Post('analyze')
   @HttpCode(HttpStatus.OK)
@@ -21,12 +28,24 @@ export class CvController {
   async analyze(@UploadedFile() file: Express.Multer.File) {
     if (!file) throw new BadRequestException('No se recibió el archivo del CV');
 
-    // Enviar a Make.com en fire-and-forget usando multipart manual con boundary
     this.sendToMake(file).catch(err =>
       console.error('[cv/analyze] Error enviando a Make.com:', err),
     );
 
     return { ok: true, message: 'CV recibido, procesando...' };
+  }
+
+  // GET /api/cv/analisis?candidatoId=<uuid>
+  // Si candidatoId no se pasa, devuelve el análisis del usuario autenticado.
+  @Get('analisis')
+  @UseGuards(JwtAuthGuard)
+  async getAnalisis(
+    @Query('candidatoId') candidatoId: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    const id = candidatoId || user.userId;
+    const data = await this.cvService.getAnalisis(id);
+    return { ok: true, data };
   }
 
   private async sendToMake(file: Express.Multer.File): Promise<void> {

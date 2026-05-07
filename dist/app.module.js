@@ -19,6 +19,7 @@ const candidatos_module_1 = require("./candidatos/candidatos.module");
 const cv_module_1 = require("./cv/cv.module");
 const upload_module_1 = require("./upload/upload.module");
 const health_module_1 = require("./health/health.module");
+const admin_module_1 = require("./admin/admin.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -42,6 +43,7 @@ exports.AppModule = AppModule = __decorate([
             cv_module_1.CvModule,
             upload_module_1.UploadModule,
             health_module_1.HealthModule,
+            admin_module_1.AdminModule,
         ],
     })
 ], AppModule);

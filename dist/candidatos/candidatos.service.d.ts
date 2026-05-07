@@ -60,6 +60,10 @@ export declare class CandidatosService {
             experience: string;
             techInitials: string[];
             score: number;
+            scoreDesglose: {
+                habilidades: number;
+                experiencia: number;
+            };
             postulado: boolean;
             createdAt: Date;
         }[];

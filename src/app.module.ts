@@ -10,6 +10,7 @@ import { CandidatosModule } from './candidatos/candidatos.module';
 import { CvModule } from './cv/cv.module';
 import { UploadModule } from './upload/upload.module';
 import { HealthModule } from './health/health.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { HealthModule } from './health/health.module';
     CvModule,
     UploadModule,
     HealthModule,
+    AdminModule,
   ],
 })
 export class AppModule {}

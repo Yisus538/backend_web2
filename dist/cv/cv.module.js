@@ -9,12 +9,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.CvModule = void 0;
 const common_1 = require("@nestjs/common");
 const cv_controller_1 = require("./cv.controller");
+const cv_service_1 = require("./cv.service");
 let CvModule = class CvModule {
 };
 exports.CvModule = CvModule;
 exports.CvModule = CvModule = __decorate([
     (0, common_1.Module)({
         controllers: [cv_controller_1.CvController],
+        providers: [cv_service_1.CvService],
     })
 ], CvModule);
 //# sourceMappingURL=cv.module.js.map

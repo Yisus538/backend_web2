@@ -7,8 +7,12 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
-// Réplica exacta del helper duplicado en /api/candidatos y /api/vacantes/recomendadas
-function calcMatchScore(candidateSkills: string[], requisitos: any): number {
+function calcMatchScoreDetailed(
+  skillNames: string[],
+  totalExp: number,
+  requisitos: any,
+  experienciaMinima: number,
+): { skillsScore: number; expScore: number | null; total: number } {
   const techSkills: string[] = (requisitos?.techSkills ?? [])
     .filter((s: any) => s.selected)
     .map((s: any) => s.label.toLowerCase());
@@ -16,10 +20,18 @@ function calcMatchScore(candidateSkills: string[], requisitos: any): number {
     .filter((s: any) => s.selected)
     .map((s: any) => s.label.toLowerCase());
   const allRequired = [...techSkills, ...softSkills];
-  if (allRequired.length === 0) return 75;
-  const lower   = candidateSkills.map((s) => s.toLowerCase());
-  const matches = allRequired.filter((r) => lower.includes(r));
-  return Math.round((matches.length / allRequired.length) * 100);
+  const lower = skillNames.map((s) => s.toLowerCase());
+  const skillsScore = allRequired.length === 0
+    ? 75
+    : Math.round((allRequired.filter((r) => lower.includes(r)).length / allRequired.length) * 100);
+
+  if (!experienciaMinima) {
+    return { skillsScore, expScore: null, total: skillsScore };
+  }
+
+  const expScore = Math.round(Math.min(totalExp / experienciaMinima, 1) * 100);
+  const total    = Math.round(skillsScore * 0.7 + expScore * 0.3);
+  return { skillsScore, expScore, total };
 }
 
 @Injectable()
@@ -95,11 +107,13 @@ export class CandidatosService {
   // GET /api/candidatos  — empresas ven candidatos
   // ────────────────────────────────────────────────────────────
   async listar(userId: string, q: any) {
-    const search    = (q.search    ?? '') as string;
-    const vacanteId = (q.vacanteId ?? null) as string | null;
-    const page      = Math.max(1, parseInt(q.page  ?? '1',  10));
-    const limit     = Math.min(50, Math.max(1, parseInt(q.limit ?? '20', 10)));
-    const skip      = (page - 1) * limit;
+    const search      = (q.search      ?? '') as string;
+    const vacanteId   = (q.vacanteId   ?? null) as string | null;
+    const ubicacion   = (q.ubicacion   ?? '') as string;
+    const aniosExpMin = q.aniosExpMin ? parseInt(q.aniosExpMin, 10) : null;
+    const page        = Math.max(1, parseInt(q.page  ?? '1',  10));
+    const limit       = Math.min(50, Math.max(1, parseInt(q.limit ?? '20', 10)));
+    const skip        = (page - 1) * limit;
 
     // Solo candidatos con perfil completo
     const where: any = {
@@ -124,6 +138,20 @@ export class CandidatosService {
       });
     }
 
+    if (ubicacion.trim()) {
+      where.AND.push({ ubicacion: { contains: ubicacion.trim(), mode: 'insensitive' } });
+    }
+
+    if (aniosExpMin !== null && aniosExpMin > 0) {
+      where.AND.push({
+        candidato: {
+          habilidades: {
+            some: { aniosExp: { gte: aniosExpMin } },
+          },
+        },
+      });
+    }
+
     // Vacante seleccionada → match score + marcar postulados
     let vacante: any      = null;
     let postulacionesSet  = new Set<string>();
@@ -131,7 +159,7 @@ export class CandidatosService {
     if (vacanteId) {
       vacante = await this.prisma.ofertaLaboral.findFirst({
         where:  { id: vacanteId, empresaId: userId },
-        select: { id: true, requisitos: true },
+        select: { id: true, requisitos: true, experienciaMinima: true },
       });
       if (vacante) {
         const posts = await this.prisma.postulacion.findMany({
@@ -183,7 +211,13 @@ export class CandidatosService {
           : s.split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 2),
       );
       const totalExp = skills.reduce((max, h) => Math.max(max, h.aniosExp ?? 0), 0);
-      const score    = vacante ? calcMatchScore(skillNames, vacante.requisitos) : null;
+      const scoreDetalle = vacante
+        ? calcMatchScoreDetailed(skillNames, totalExp, vacante.requisitos, vacante.experienciaMinima ?? 0)
+        : null;
+      const score        = scoreDetalle?.total ?? null;
+      const scoreDesglose = scoreDetalle
+        ? { habilidades: scoreDetalle.skillsScore, experiencia: scoreDetalle.expScore }
+        : null;
       const postulado = vacante ? postulacionesSet.has(u.id) : false;
 
       return {
@@ -197,6 +231,7 @@ export class CandidatosService {
         experience:  totalExp > 0 ? `${totalExp} años de experiencia` : 'Sin experiencia registrada',
         techInitials,
         score,
+        scoreDesglose,
         postulado,
         createdAt:   u.createdAt,
       };
