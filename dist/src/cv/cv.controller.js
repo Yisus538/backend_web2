@@ -11,8 +11,11 @@ Object.defineProperty(exports, "CvController", {
 const _common = require("@nestjs/common");
 const _platformexpress = require("@nestjs/platform-express");
 const _jwtauthguard = require("../common/guards/jwt-auth.guard");
+const _rolesguard = require("../common/guards/roles.guard");
+const _rolesdecorator = require("../common/decorators/roles.decorator");
 const _currentuserdecorator = require("../common/decorators/current-user.decorator");
 const _cvservice = require("./cv.service");
+const _cvanalisisdto = require("./dto/cv-analisis.dto");
 function _ts_decorate(decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
@@ -30,16 +33,22 @@ function _ts_param(paramIndex, decorator) {
 const MAKE_WEBHOOK_URL = 'https://hook.us2.make.com/r7dc3o8jguw9t7olo1byd40knnfco6ks';
 const MAKE_API_KEY = 'jitKx-t9QAJBR2_';
 let CvController = class CvController {
-    async analyze(file) {
+    // ────────────────────────────────────────────────────────────────
+    // POST /api/cv/analyze
+    // Solo candidatos autenticados. Envía el CV a Make.com (fire-and-forget).
+    // ────────────────────────────────────────────────────────────────
+    async analyze(file, user) {
         if (!file) throw new _common.BadRequestException('No se recibió el archivo del CV');
-        this.sendToMake(file).catch((err)=>console.error('[cv/analyze] Error enviando a Make.com:', err));
+        this.sendToMake(file, user.userId).catch((err)=>this.logger.error('[analyze] Error enviando a Make.com:', err));
         return {
             ok: true,
             message: 'CV recibido, procesando...'
         };
     }
+    // ────────────────────────────────────────────────────────────────
     // GET /api/cv/analisis?candidatoId=<uuid>
-    // Si candidatoId no se pasa, devuelve el análisis del usuario autenticado.
+    // Devuelve el último análisis IA del candidato.
+    // ────────────────────────────────────────────────────────────────
     async getAnalisis(candidatoId, user) {
         const id = candidatoId || user.userId;
         const data = await this.cvService.getAnalisis(id);
@@ -48,12 +57,40 @@ let CvController = class CvController {
             data
         };
     }
-    async sendToMake(file) {
+    // ────────────────────────────────────────────────────────────────
+    // POST /api/cv/callback
+    // Receptor del análisis de Make.com. Sin JWT — autenticado por header.
+    // Make llama a este endpoint cuando termina de analizar el CV.
+    // ────────────────────────────────────────────────────────────────
+    async callback(secret, payload) {
+        const expected = process.env.WEBHOOK_SECRET ?? 'reclutaia-make-2024';
+        if (!secret || secret !== expected) {
+            this.logger.warn('[callback] Intento con secret inválido');
+            throw new _common.UnauthorizedException('Secret inválido');
+        }
+        if (!payload?.candidatoId) {
+            throw new _common.BadRequestException('candidatoId requerido en el payload');
+        }
+        this.logger.log(`[callback] Payload recibido para candidato ${payload.candidatoId}`);
+        await this.cvService.procesarAnalisis(payload.candidatoId, payload);
+        return {
+            ok: true,
+            message: 'Análisis procesado'
+        };
+    }
+    // ────────────────────────────────────────────────────────────────
+    // Envía el CV a Make.com incluyendo candidatoId como campo de texto.
+    // ────────────────────────────────────────────────────────────────
+    async sendToMake(file, candidatoId) {
         const boundary = `----FormBoundary${Date.now()}`;
-        const header = Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="documento_cv"; filename="${file.originalname}"\r\nContent-Type: ${file.mimetype}\r\n\r\n`);
+        // Part 1: candidatoId (texto plano)
+        const idPart = Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="candidatoId"\r\n\r\n${candidatoId}\r\n`);
+        // Part 2: archivo CV
+        const fileHeader = Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="documento_cv"; filename="${file.originalname}"\r\nContent-Type: ${file.mimetype}\r\n\r\n`);
         const footer = Buffer.from(`\r\n--${boundary}--\r\n`);
         const body = Buffer.concat([
-            header,
+            idPart,
+            fileHeader,
             file.buffer,
             footer
         ]);
@@ -70,20 +107,25 @@ let CvController = class CvController {
     }
     constructor(cvService){
         this.cvService = cvService;
+        this.logger = new _common.Logger(CvController.name);
     }
 };
 _ts_decorate([
     (0, _common.Post)('analyze'),
     (0, _common.HttpCode)(_common.HttpStatus.OK),
+    (0, _common.UseGuards)(_jwtauthguard.JwtAuthGuard, _rolesguard.RolesGuard),
+    (0, _rolesdecorator.Roles)('candidate'),
     (0, _common.UseInterceptors)((0, _platformexpress.FileInterceptor)('documento_cv', {
         limits: {
             fileSize: 10 * 1024 * 1024
         }
     })),
     _ts_param(0, (0, _common.UploadedFile)()),
+    _ts_param(1, (0, _currentuserdecorator.CurrentUser)()),
     _ts_metadata("design:type", Function),
     _ts_metadata("design:paramtypes", [
-        typeof Express === "undefined" || typeof Express.Multer === "undefined" || typeof Express.Multer.File === "undefined" ? Object : Express.Multer.File
+        typeof Express === "undefined" || typeof Express.Multer === "undefined" || typeof Express.Multer.File === "undefined" ? Object : Express.Multer.File,
+        typeof _currentuserdecorator.JwtPayload === "undefined" ? Object : _currentuserdecorator.JwtPayload
     ]),
     _ts_metadata("design:returntype", Promise)
 ], CvController.prototype, "analyze", null);
@@ -99,6 +141,18 @@ _ts_decorate([
     ]),
     _ts_metadata("design:returntype", Promise)
 ], CvController.prototype, "getAnalisis", null);
+_ts_decorate([
+    (0, _common.Post)('callback'),
+    (0, _common.HttpCode)(_common.HttpStatus.OK),
+    _ts_param(0, (0, _common.Headers)('x-webhook-secret')),
+    _ts_param(1, (0, _common.Body)()),
+    _ts_metadata("design:type", Function),
+    _ts_metadata("design:paramtypes", [
+        String,
+        typeof _cvanalisisdto.CvAnalisisDto === "undefined" ? Object : _cvanalisisdto.CvAnalisisDto
+    ]),
+    _ts_metadata("design:returntype", Promise)
+], CvController.prototype, "callback", null);
 CvController = _ts_decorate([
     (0, _common.Controller)('cv'),
     _ts_metadata("design:type", Function),
