@@ -10,31 +10,40 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { v2 as cloudinary } from 'cloudinary';
-import * as sharp from 'sharp';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { CurrentUser, JwtPayload } from '../common/decorators/current-user.decorator';
 
-// Configurar Cloudinary una sola vez al cargar el módulo
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME!,
-  api_key:    process.env.CLOUDINARY_API_KEY!,
-  api_secret: process.env.CLOUDINARY_API_SECRET!,
-});
+// Lazy-load both heavy native modules so they don't block NestJS startup.
+// cloudinary v2 and sharp both hang the event loop for several seconds on macOS
+// when required at module load time.
+let cloudinaryLib: typeof import('cloudinary') | null = null;
+let sharpLib: typeof import('sharp') | null = null;
+
+async function getCloudinary() {
+  if (!cloudinaryLib) {
+    cloudinaryLib = await import('cloudinary');
+    cloudinaryLib.v2.config({
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME!,
+      api_key:    process.env.CLOUDINARY_API_KEY!,
+      api_secret: process.env.CLOUDINARY_API_SECRET!,
+    });
+  }
+  return cloudinaryLib.v2;
+}
+
+async function getSharp() {
+  if (!sharpLib) sharpLib = (await import('sharp')).default as any;
+  return sharpLib!;
+}
 
 @Controller('upload-avatar')
 @UseGuards(JwtAuthGuard)
 export class UploadController {
-  // ────────────────────────────────────────────────────────────
-  // POST /api/upload-avatar
-  // Recibe multipart/form-data con campo "avatar"
-  // Convierte a WebP con sharp, sube a Cloudinary
-  // ────────────────────────────────────────────────────────────
   @Post()
   @HttpCode(HttpStatus.OK)
   @UseInterceptors(
     FileInterceptor('avatar', {
-      limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB máx
+      limits: { fileSize: 5 * 1024 * 1024 },
       fileFilter: (_req, file, cb) => {
         if (!file.mimetype.startsWith('image/')) {
           return cb(new BadRequestException('Solo se permiten imágenes'), false);
@@ -52,13 +61,14 @@ export class UploadController {
     }
 
     try {
-      // Convertir a WebP 500×500 (réplica exacta del route.ts original)
+      const sharp     = await getSharp();
+      const cloudinary = await getCloudinary();
+
       const webpBuffer = await sharp(file.buffer)
         .resize(500, 500, { fit: 'cover' })
         .webp({ quality: 80 })
         .toBuffer();
 
-      // Subir a Cloudinary
       const result = await new Promise<{ secure_url: string }>((resolve, reject) => {
         cloudinary.uploader
           .upload_stream(

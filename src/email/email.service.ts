@@ -20,7 +20,8 @@ export class EmailService {
         'Content-Type': 'application/json',
         Authorization:  `Bearer ${apiKey}`,
       },
-      body: JSON.stringify({ from, to: [to], subject, html }),
+      body:   JSON.stringify({ from, to: [to], subject, html }),
+      signal: AbortSignal.timeout(10_000),
     });
 
     const body = await res.json().catch(() => ({}));

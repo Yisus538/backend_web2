@@ -38,15 +38,22 @@ const JWT_REF_EXP   = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
 
 @Injectable()
 export class AuthService {
-  // Cooldown in-memory para resend-verification (replica original)
   private resendCooldown = new Map<string, number>();
   private readonly COOLDOWN_MS = 2 * 60 * 1000; // 2 min
 
   constructor(
-    private prisma:    PrismaService,
-    private email:     EmailService,
+    private prisma:     PrismaService,
+    private email:      EmailService,
     private navService: NavService,
-  ) {}
+  ) {
+    // Purge expired cooldown entries every 10 minutes to avoid indefinite growth
+    setInterval(() => {
+      const now = Date.now();
+      for (const [key, ts] of this.resendCooldown) {
+        if (now - ts > this.COOLDOWN_MS) this.resendCooldown.delete(key);
+      }
+    }, 10 * 60 * 1000).unref();
+  }
 
   // ────────────────────────────────────────────────────────────
   // Helpers privados

@@ -283,6 +283,8 @@ export class VacantesService {
         estado: 'abierta',
         ...(appliedIds.length > 0 ? { id: { notIn: appliedIds } } : {}),
       },
+      take: 200,
+      orderBy: { creadaEl: 'desc' },
       select: {
         id:        true, titulo:    true, categoria: true,
         modalidad: true, ubicacion: true,

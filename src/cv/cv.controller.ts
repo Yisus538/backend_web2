@@ -65,7 +65,8 @@ export class CvController {
         'Content-Type':   `multipart/form-data; boundary=${boundary}`,
         'Content-Length': String(body.length),
       },
-      body: body as any,
+      body:   body as any,
+      signal: AbortSignal.timeout(15_000),
     });
   }
 }
