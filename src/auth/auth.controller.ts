@@ -156,7 +156,7 @@ export class AuthController {
     const tokens = await this.authService.refreshTokens(refreshToken);
     setAuthCookies(res, tokens);
 
-    return { ok: true, message: 'Tokens renovados' };
+    return { ok: true, data: { accessToken: tokens.accessToken }, message: 'Tokens renovados' };
   }
 
   // ── POST /api/auth/resend-verification ───────────────────────────────────

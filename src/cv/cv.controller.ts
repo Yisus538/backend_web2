@@ -77,7 +77,8 @@ export class CvController {
   @HttpCode(HttpStatus.OK)
   async callback(
     @Headers('x-webhook-secret') secret: string,
-    @Body() payload: CvAnalisisDto,
+    @Query('candidatoId') candidatoIdQuery: string,
+    @Body() rawPayload: Record<string, any>,
   ) {
     const expected = process.env.WEBHOOK_SECRET ?? 'reclutaia-make-2024';
     if (!secret || secret !== expected) {
@@ -85,13 +86,28 @@ export class CvController {
       throw new UnauthorizedException('Secret inválido');
     }
 
-    if (!payload?.candidatoId) {
+    this.logger.log('[callback] Payload crudo recibido: ' + JSON.stringify(rawPayload));
+
+    const candidatoId =
+      rawPayload?.candidatoId ||
+      rawPayload?.candidato_id ||
+      rawPayload?.CandidatoId ||
+      rawPayload?.CANDIDATOID ||
+      candidatoIdQuery ||
+      '';
+
+    if (!candidatoId) {
+      this.logger.error(
+        '[callback] candidatoId ausente. Campos recibidos: [' +
+          Object.keys(rawPayload ?? {}).join(', ') +
+          ']',
+      );
       throw new BadRequestException('candidatoId requerido en el payload');
     }
 
-    this.logger.log(`[callback] Payload recibido para candidato ${payload.candidatoId}`);
+    const payload: CvAnalisisDto = { ...rawPayload, candidatoId } as CvAnalisisDto;
 
-    await this.cvService.procesarAnalisis(payload.candidatoId, payload);
+    await this.cvService.procesarAnalisis(candidatoId, payload);
     return { ok: true, message: 'Análisis procesado' };
   }
 
@@ -99,30 +115,30 @@ export class CvController {
   // Envía el CV a Make.com incluyendo candidatoId como campo de texto.
   // ────────────────────────────────────────────────────────────────
   private async sendToMake(file: Express.Multer.File, candidatoId: string): Promise<void> {
-    const boundary = `----FormBoundary${Date.now()}`;
-
-    // Part 1: candidatoId (texto plano)
-    const idPart = Buffer.from(
-      `--${boundary}\r\nContent-Disposition: form-data; name="candidatoId"\r\n\r\n${candidatoId}\r\n`,
+    const formData = new FormData();
+    formData.append('candidatoId', candidatoId);
+    formData.append(
+      'documento_cv',
+      new Blob([file.buffer], { type: file.mimetype }),
+      file.originalname,
     );
 
-    // Part 2: archivo CV
-    const fileHeader = Buffer.from(
-      `--${boundary}\r\nContent-Disposition: form-data; name="documento_cv"; filename="${file.originalname}"\r\nContent-Type: ${file.mimetype}\r\n\r\n`,
-    );
-    const footer = Buffer.from(`\r\n--${boundary}--\r\n`);
+    const url = `${MAKE_WEBHOOK_URL}?candidatoId=${encodeURIComponent(candidatoId)}`;
 
-    const body = Buffer.concat([idPart, fileHeader, file.buffer, footer]);
+    this.logger.log(`[sendToMake] Enviando CV a Make para candidato ${candidatoId}`);
 
-    await fetch(MAKE_WEBHOOK_URL, {
+    const response = await fetch(url, {
       method:  'POST',
-      headers: {
-        'x-make-apikey':  MAKE_API_KEY,
-        'Content-Type':   `multipart/form-data; boundary=${boundary}`,
-        'Content-Length': String(body.length),
-      },
-      body:   body as any,
-      signal: AbortSignal.timeout(15_000),
+      headers: { 'x-make-apikey': MAKE_API_KEY },
+      body:    formData,
+      signal:  AbortSignal.timeout(15_000),
     });
+
+    this.logger.log(`[sendToMake] Respuesta de Make: ${response.status}`);
+
+    if (!response.ok) {
+      const text = await response.text();
+      this.logger.error(`[sendToMake] Error de Make (${response.status}): ${text}`);
+    }
   }
 }

@@ -15,7 +15,6 @@ const _rolesguard = require("../common/guards/roles.guard");
 const _rolesdecorator = require("../common/decorators/roles.decorator");
 const _currentuserdecorator = require("../common/decorators/current-user.decorator");
 const _cvservice = require("./cv.service");
-const _cvanalisisdto = require("./dto/cv-analisis.dto");
 function _ts_decorate(decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
@@ -62,17 +61,23 @@ let CvController = class CvController {
     // Receptor del análisis de Make.com. Sin JWT — autenticado por header.
     // Make llama a este endpoint cuando termina de analizar el CV.
     // ────────────────────────────────────────────────────────────────
-    async callback(secret, payload) {
+    async callback(secret, candidatoIdQuery, rawPayload) {
         const expected = process.env.WEBHOOK_SECRET ?? 'reclutaia-make-2024';
         if (!secret || secret !== expected) {
             this.logger.warn('[callback] Intento con secret inválido');
             throw new _common.UnauthorizedException('Secret inválido');
         }
-        if (!payload?.candidatoId) {
+        this.logger.log('[callback] Payload crudo recibido: ' + JSON.stringify(rawPayload));
+        const candidatoId = rawPayload?.candidatoId || rawPayload?.candidato_id || rawPayload?.CandidatoId || rawPayload?.CANDIDATOID || candidatoIdQuery || '';
+        if (!candidatoId) {
+            this.logger.error('[callback] candidatoId ausente. Campos recibidos: [' + Object.keys(rawPayload ?? {}).join(', ') + ']');
             throw new _common.BadRequestException('candidatoId requerido en el payload');
         }
-        this.logger.log(`[callback] Payload recibido para candidato ${payload.candidatoId}`);
-        await this.cvService.procesarAnalisis(payload.candidatoId, payload);
+        const payload = {
+            ...rawPayload,
+            candidatoId
+        };
+        await this.cvService.procesarAnalisis(candidatoId, payload);
         return {
             ok: true,
             message: 'Análisis procesado'
@@ -82,28 +87,28 @@ let CvController = class CvController {
     // Envía el CV a Make.com incluyendo candidatoId como campo de texto.
     // ────────────────────────────────────────────────────────────────
     async sendToMake(file, candidatoId) {
-        const boundary = `----FormBoundary${Date.now()}`;
-        // Part 1: candidatoId (texto plano)
-        const idPart = Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="candidatoId"\r\n\r\n${candidatoId}\r\n`);
-        // Part 2: archivo CV
-        const fileHeader = Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="documento_cv"; filename="${file.originalname}"\r\nContent-Type: ${file.mimetype}\r\n\r\n`);
-        const footer = Buffer.from(`\r\n--${boundary}--\r\n`);
-        const body = Buffer.concat([
-            idPart,
-            fileHeader,
-            file.buffer,
-            footer
-        ]);
-        await fetch(MAKE_WEBHOOK_URL, {
+        const formData = new FormData();
+        formData.append('candidatoId', candidatoId);
+        formData.append('documento_cv', new Blob([
+            file.buffer
+        ], {
+            type: file.mimetype
+        }), file.originalname);
+        const url = `${MAKE_WEBHOOK_URL}?candidatoId=${encodeURIComponent(candidatoId)}`;
+        this.logger.log(`[sendToMake] Enviando CV a Make para candidato ${candidatoId}`);
+        const response = await fetch(url, {
             method: 'POST',
             headers: {
-                'x-make-apikey': MAKE_API_KEY,
-                'Content-Type': `multipart/form-data; boundary=${boundary}`,
-                'Content-Length': String(body.length)
+                'x-make-apikey': MAKE_API_KEY
             },
-            body: body,
+            body: formData,
             signal: AbortSignal.timeout(15_000)
         });
+        this.logger.log(`[sendToMake] Respuesta de Make: ${response.status}`);
+        if (!response.ok) {
+            const text = await response.text();
+            this.logger.error(`[sendToMake] Error de Make (${response.status}): ${text}`);
+        }
     }
     constructor(cvService){
         this.cvService = cvService;
@@ -145,11 +150,13 @@ _ts_decorate([
     (0, _common.Post)('callback'),
     (0, _common.HttpCode)(_common.HttpStatus.OK),
     _ts_param(0, (0, _common.Headers)('x-webhook-secret')),
-    _ts_param(1, (0, _common.Body)()),
+    _ts_param(1, (0, _common.Query)('candidatoId')),
+    _ts_param(2, (0, _common.Body)()),
     _ts_metadata("design:type", Function),
     _ts_metadata("design:paramtypes", [
         String,
-        typeof _cvanalisisdto.CvAnalisisDto === "undefined" ? Object : _cvanalisisdto.CvAnalisisDto
+        String,
+        typeof Record === "undefined" ? Object : Record
     ]),
     _ts_metadata("design:returntype", Promise)
 ], CvController.prototype, "callback", null);

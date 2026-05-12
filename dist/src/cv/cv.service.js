@@ -55,7 +55,7 @@ function normalizarNivelIdioma(nivel) {
     if (/intermed|intermediate|b1|a2/.test(n)) return 'intermedio';
     return 'basico';
 }
-// Parsea confianzaDatos → Int (0-100). Acepta "85", "85%", "0.85".
+// Parsea confianza_datos → Int (0-100). Acepta "85", "85%", "0.85".
 function parseScore(raw) {
     if (!raw) return null;
     const n = parseFloat(String(raw).replace('%', '').trim());
@@ -91,7 +91,7 @@ let CvService = class CvService {
             update: {}
         });
         // 2. Crear registro de análisis con score y payload completo
-        const score = parseScore(payload.confianzaDatos);
+        const score = parseScore(payload.confianza_datos);
         const analisis = await this.prisma.analisisCvDirecto.create({
             data: {
                 candidatoId,
@@ -104,7 +104,7 @@ let CvService = class CvService {
         this.logger.log(`[callback] AnalisisCvDirecto creado: ${analisis.id} — score: ${score}`);
         // 3. Habilidades — upsert sin sobrescribir datos manuales
         let skillsNuevas = 0;
-        for (const s of payload.skills ?? []){
+        for (const s of payload.skills_detectadas ?? []){
             const nombre = s.skill?.trim();
             if (!nombre) continue;
             try {
@@ -123,10 +123,10 @@ let CvService = class CvService {
                 this.logger.warn(`[callback] No se pudo procesar skill "${nombre}": ${err.message}`);
             }
         }
-        this.logger.log(`[callback] Skills procesadas: ${skillsNuevas} nuevas de ${(payload.skills ?? []).length}`);
+        this.logger.log(`[callback] Skills procesadas: ${skillsNuevas} nuevas de ${(payload.skills_detectadas ?? []).length}`);
         // 4. Experiencia — insertar solo si no existe ya (misma empresa + cargo)
         let expNuevas = 0;
-        for (const exp of payload.experiencia ?? []){
+        for (const exp of payload.experiencia_laboral ?? []){
             const { empresa, cargo, periodo, descripcion } = exp;
             if (!empresa?.trim() || !cargo?.trim()) continue;
             try {
@@ -163,7 +163,7 @@ let CvService = class CvService {
                 this.logger.warn(`[callback] No se pudo procesar experiencia "${empresa}/${cargo}": ${err.message}`);
             }
         }
-        this.logger.log(`[callback] Experiencia: ${expNuevas} nuevas de ${(payload.experiencia ?? []).length}`);
+        this.logger.log(`[callback] Experiencia: ${expNuevas} nuevas de ${(payload.experiencia_laboral ?? []).length}`);
         // 5. Educación — insertar solo si no existe ya (misma institución + título)
         let eduNuevas = 0;
         for (const edu of payload.educacion ?? []){
@@ -246,7 +246,7 @@ let CvService = class CvService {
         });
         this.logger.log(`[callback] Análisis ${analisis.id} procesado en ${duracionMs}ms`);
     }
-    // Upsert de CandidatoHabilidad: inserta si no existe, no sobrescribe si ya existe.
+    // Upsert de CandidatoHabilidad: inserta si no existe, no sobrescribe nivel manual.
     // Retorna { created: boolean }.
     async upsertCandidatoHabilidad(candidatoId, habilidadId, nivel) {
         try {

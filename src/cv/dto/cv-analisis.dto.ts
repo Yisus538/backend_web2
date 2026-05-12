@@ -24,7 +24,11 @@ export class IdiomaIaDto {
   nivel: string;
 }
 
+import { IsNotEmpty, IsString } from 'class-validator';
+
 export class CvAnalisisDto {
+  @IsString()
+  @IsNotEmpty({ message: 'candidatoId es requerido' })
   candidatoId: string;
   skills_detectadas: SkillDto[];
   experiencia_laboral: ExperienciaIaDto[];

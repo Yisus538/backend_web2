@@ -156,6 +156,9 @@ let AuthController = class AuthController {
         setAuthCookies(res, tokens);
         return {
             ok: true,
+            data: {
+                accessToken: tokens.accessToken
+            },
             message: 'Tokens renovados'
         };
     }
