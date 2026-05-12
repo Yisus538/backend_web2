@@ -26,9 +26,9 @@ export class IdiomaIaDto {
 
 export class CvAnalisisDto {
   candidatoId: string;
-  skills: SkillDto[];
-  experiencia: ExperienciaIaDto[];
+  skills_detectadas: SkillDto[];
+  experiencia_laboral: ExperienciaIaDto[];
   educacion: EducacionIaDto[];
   idiomas: IdiomaIaDto[];
-  confianzaDatos: string;
+  confianza_datos: string;
 }
