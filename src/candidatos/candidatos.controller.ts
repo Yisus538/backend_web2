@@ -16,11 +16,11 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser, JwtPayload } from '../common/decorators/current-user.decorator';
-
+//ahora estoy en la rama make
 @Controller('candidatos')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class CandidatosController {
-  constructor(private svc: CandidatosService) {}
+  constructor(private svc: CandidatosService) { }
 
   // ────────────────────────────────────────────────────────────
   // GET /api/candidatos  — solo empresas
