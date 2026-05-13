@@ -77,7 +77,7 @@ export class AuthController {
     return {
       ok:      true,
       message: 'Sesión iniciada',
-      data:    { user: result.user, nav: result.nav, accessToken: result.tokens.accessToken },
+      data:    { user: result.user, nav: result.nav, accessToken: result.tokens.accessToken, refreshToken: result.tokens.refreshToken },
     };
   }
 
@@ -149,14 +149,15 @@ export class AuthController {
   async refresh(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
+    @Body('refreshToken') bodyRefreshToken?: string,
   ) {
-    const refreshToken = req.cookies?.refreshToken;
+    const refreshToken = req.cookies?.refreshToken || bodyRefreshToken;
     if (!refreshToken) throw new UnauthorizedException('No hay refresh token');
 
     const tokens = await this.authService.refreshTokens(refreshToken);
     setAuthCookies(res, tokens);
 
-    return { ok: true, data: { accessToken: tokens.accessToken }, message: 'Tokens renovados' };
+    return { ok: true, data: { accessToken: tokens.accessToken, refreshToken: tokens.refreshToken }, message: 'Tokens renovados' };
   }
 
   // ── POST /api/auth/resend-verification ───────────────────────────────────

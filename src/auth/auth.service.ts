@@ -31,10 +31,14 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 
 const MAX_FAILED    = 5;
 const LOCK_MINUTES  = 15;
-const JWT_SECRET    = process.env.JWT_SECRET    || 'dev_secret_change_in_production_min32chars';
-const JWT_REF_SEC   = process.env.JWT_REFRESH_SECRET || 'dev_refresh_secret_change_in_production_32c';
-const JWT_EXP       = process.env.JWT_EXPIRES_IN        || '1h';
-const JWT_REF_EXP   = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
+// ⚠️  These MUST be read lazily (via getter) because at module-load time
+//     ConfigModule hasn't loaded .env yet, so process.env.JWT_SECRET is undefined.
+//     jwt.strategy.ts reads them inside its constructor (after DI), causing a
+//     secret mismatch → "invalid signature" on every authenticated request.
+const jwtSecret    = () => process.env.JWT_SECRET    || 'dev_secret_change_in_production_min32chars';
+const jwtRefSec    = () => process.env.JWT_REFRESH_SECRET || 'dev_refresh_secret_change_in_production_32c';
+const jwtExp       = () => process.env.JWT_EXPIRES_IN        || '1h';
+const jwtRefExp    = () => process.env.JWT_REFRESH_EXPIRES_IN || '7d';
 
 @Injectable()
 export class AuthService {
@@ -60,8 +64,8 @@ export class AuthService {
   // ────────────────────────────────────────────────────────────
   private generateTokens(payload: { userId: string; email: string; role: string }) {
     return {
-      accessToken:  jwt.sign(payload, JWT_SECRET,  { expiresIn: JWT_EXP     } as any),
-      refreshToken: jwt.sign(payload, JWT_REF_SEC, { expiresIn: JWT_REF_EXP } as any),
+      accessToken:  jwt.sign(payload, jwtSecret(),  { expiresIn: jwtExp()     } as any),
+      refreshToken: jwt.sign(payload, jwtRefSec(), { expiresIn: jwtRefExp() } as any),
     };
   }
 
@@ -199,7 +203,7 @@ export class AuthService {
   async refreshTokens(refreshToken: string) {
     if (!refreshToken) throw new BadRequestException('Refresh token requerido');
     try {
-      const payload = jwt.verify(refreshToken, JWT_REF_SEC) as any;
+      const payload = jwt.verify(refreshToken, jwtRefSec()) as any;
       const user    = await this.prisma.user.findUnique({ where: { id: payload.userId } });
       if (!user || !user.isActive) throw new Error();
       return this.generateTokens({ userId: user.id, email: user.email, role: user.role });

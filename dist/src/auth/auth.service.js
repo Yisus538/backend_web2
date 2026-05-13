@@ -67,21 +67,25 @@ function _ts_metadata(k, v) {
 }
 const MAX_FAILED = 5;
 const LOCK_MINUTES = 15;
-const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_change_in_production_min32chars';
-const JWT_REF_SEC = process.env.JWT_REFRESH_SECRET || 'dev_refresh_secret_change_in_production_32c';
-const JWT_EXP = process.env.JWT_EXPIRES_IN || '1h';
-const JWT_REF_EXP = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
+// ⚠️  These MUST be read lazily (via getter) because at module-load time
+//     ConfigModule hasn't loaded .env yet, so process.env.JWT_SECRET is undefined.
+//     jwt.strategy.ts reads them inside its constructor (after DI), causing a
+//     secret mismatch → "invalid signature" on every authenticated request.
+const jwtSecret = ()=>process.env.JWT_SECRET || 'dev_secret_change_in_production_min32chars';
+const jwtRefSec = ()=>process.env.JWT_REFRESH_SECRET || 'dev_refresh_secret_change_in_production_32c';
+const jwtExp = ()=>process.env.JWT_EXPIRES_IN || '1h';
+const jwtRefExp = ()=>process.env.JWT_REFRESH_EXPIRES_IN || '7d';
 let AuthService = class AuthService {
     // ────────────────────────────────────────────────────────────
     // Helpers privados
     // ────────────────────────────────────────────────────────────
     generateTokens(payload) {
         return {
-            accessToken: _jsonwebtoken.sign(payload, JWT_SECRET, {
-                expiresIn: JWT_EXP
+            accessToken: _jsonwebtoken.sign(payload, jwtSecret(), {
+                expiresIn: jwtExp()
             }),
-            refreshToken: _jsonwebtoken.sign(payload, JWT_REF_SEC, {
-                expiresIn: JWT_REF_EXP
+            refreshToken: _jsonwebtoken.sign(payload, jwtRefSec(), {
+                expiresIn: jwtRefExp()
             })
         };
     }
@@ -233,7 +237,7 @@ let AuthService = class AuthService {
     async refreshTokens(refreshToken) {
         if (!refreshToken) throw new _common.BadRequestException('Refresh token requerido');
         try {
-            const payload = _jsonwebtoken.verify(refreshToken, JWT_REF_SEC);
+            const payload = _jsonwebtoken.verify(refreshToken, jwtRefSec());
             const user = await this.prisma.user.findUnique({
                 where: {
                     id: payload.userId
