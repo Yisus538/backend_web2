@@ -79,7 +79,8 @@ let AuthController = class AuthController {
             data: {
                 user: result.user,
                 nav: result.nav,
-                accessToken: result.tokens.accessToken
+                accessToken: result.tokens.accessToken,
+                refreshToken: result.tokens.refreshToken
             }
         };
     }
@@ -149,15 +150,16 @@ let AuthController = class AuthController {
     }
     // ── POST /api/auth/refresh ────────────────────────────────────────────────
     // Lee el refreshToken de la cookie (ya no del body).
-    async refresh(req, res) {
-        const refreshToken = req.cookies?.refreshToken;
+    async refresh(req, res, bodyRefreshToken) {
+        const refreshToken = req.cookies?.refreshToken || bodyRefreshToken;
         if (!refreshToken) throw new _common.UnauthorizedException('No hay refresh token');
         const tokens = await this.authService.refreshTokens(refreshToken);
         setAuthCookies(res, tokens);
         return {
             ok: true,
             data: {
-                accessToken: tokens.accessToken
+                accessToken: tokens.accessToken,
+                refreshToken: tokens.refreshToken
             },
             message: 'Tokens renovados'
         };
@@ -298,10 +300,12 @@ _ts_decorate([
     _ts_param(1, (0, _common.Res)({
         passthrough: true
     })),
+    _ts_param(2, (0, _common.Body)('refreshToken')),
     _ts_metadata("design:type", Function),
     _ts_metadata("design:paramtypes", [
         typeof _express.Request === "undefined" ? Object : _express.Request,
-        typeof _express.Response === "undefined" ? Object : _express.Response
+        typeof _express.Response === "undefined" ? Object : _express.Response,
+        String
     ]),
     _ts_metadata("design:returntype", Promise)
 ], AuthController.prototype, "refresh", null);

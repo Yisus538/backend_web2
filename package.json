@@ -8,7 +8,7 @@
   "scripts": {
     "build": "prisma generate && nest build",
     "start": "node dist/src/main",
-    "prestart:dev": "lsof -i :3000 -t | xargs kill -9 2>/dev/null || true",
+    "prestart:dev": "kill-port 3000",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "prisma migrate deploy && node dist/src/main",
@@ -60,6 +60,7 @@
     "@types/sharp": "^0.31.1",
     "@types/uuid": "^10.0.0",
     "chokidar": "^5.0.0",
+    "kill-port": "^2.0.1",
     "ts-node": "^10.9.2",
     "tsx": "^4.21.0",
     "typescript": "^5.5.3"
