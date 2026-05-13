@@ -55,17 +55,17 @@ function normalizarNivelIdioma(nivel) {
     if (/intermed|intermediate|b1|a2/.test(n)) return 'intermedio';
     return 'basico';
 }
-// Parsea confianza_datos → Int (0-100). Acepta "85", "85%", "0.85".
+// Parsea confianza_datos → Int (0-100). Acepta "85", "85%", "0.85", o number.
 function parseScore(raw) {
-    if (!raw) return null;
+    if (raw === null || raw === undefined || raw === '') return null;
     const n = parseFloat(String(raw).replace('%', '').trim());
     if (isNaN(n)) return null;
     return Math.round(n <= 1 ? n * 100 : n);
 }
 let CvService = class CvService {
-    // GET /api/cv/analisis — devuelve el último análisis + experiencia y habilidades de la BD
+    // GET /api/cv/analisis — devuelve análisis + datos redistribuidos de la BD
     async getAnalisis(candidatoId) {
-        const [analisis, experienciaLaboral, habilidadesDetectadas] = await Promise.all([
+        const [analisis, experienciaLaboral, todasHabilidades] = await Promise.all([
             this.prisma.analisisCvDirecto.findFirst({
                 where: {
                     candidatoId
@@ -99,6 +99,7 @@ let CvService = class CvService {
                 select: {
                     nivel: true,
                     aniosExp: true,
+                    tipo: true,
                     habilidad: {
                         select: {
                             nombre: true
@@ -111,15 +112,19 @@ let CvService = class CvService {
             })
         ]);
         if (!analisis) return null;
-        const habilidades = habilidadesDetectadas.map((h)=>({
+        const habilidades = todasHabilidades.filter((h)=>h.tipo !== 'tecnologia').map((h)=>({
                 nombre: h.habilidad.nombre,
                 nivel: h.nivel ?? null,
                 aniosExp: h.aniosExp ?? null
             }));
+        const tecnologias = todasHabilidades.filter((h)=>h.tipo === 'tecnologia').map((h)=>h.habilidad.nombre);
+        // Exponer solo columnas escalares del análisis (sin los JSON blobs)
+        const { cvCompleto: _, evaluacionCompleta: __, ...analisisLimpio } = analisis;
         return {
-            ...analisis,
+            ...analisisLimpio,
             experienciaLaboral,
-            habilidades
+            habilidades,
+            tecnologias
         };
     }
     // Llamado desde el callback de Make.com con el análisis procesado.
@@ -138,7 +143,7 @@ let CvService = class CvService {
             },
             update: {}
         });
-        // 2. Crear registro de análisis con score y payload completo
+        // 2. Crear registro de análisis con score, datos personales y payload completo
         const score = parseScore(payload.confianza_datos);
         const analisis = await this.prisma.analisisCvDirecto.create({
             data: {
@@ -146,12 +151,15 @@ let CvService = class CvService {
                 score,
                 apto: score !== null ? score >= 60 : null,
                 resumen: payload.resumen ?? null,
-                cvCompleto: payload,
-                evaluacionCompleta: payload
+                nombreCompleto: payload.nombre_completo ?? null,
+                correoCv: payload.correo_cv ?? null,
+                telefonoCv: payload.telefono_cv ?? null,
+                puestoEvaluado: payload.puesto_evaluado ?? null,
+                motivoRechazo: payload.motivo_rechazo ?? null
             }
         });
         this.logger.log(`[callback] AnalisisCvDirecto creado: ${analisis.id} — score: ${score}`);
-        // 3. Habilidades — upsert sin sobrescribir datos manuales
+        // 3. Habilidades — upsert sin sobrescribir datos manuales, tipo = 'habilidad'
         let skillsNuevas = 0;
         for (const s of payload.skills_detectadas ?? []){
             const nombre = s.skill?.trim();
@@ -166,13 +174,35 @@ let CvService = class CvService {
                     },
                     update: {}
                 });
-                const { created } = await this.upsertCandidatoHabilidad(candidatoId, habilidad.id, s.nivel_estimado ?? null);
+                const { created } = await this.upsertCandidatoHabilidad(candidatoId, habilidad.id, s.nivel_estimado ?? null, 'habilidad');
                 if (created) skillsNuevas++;
             } catch (err) {
                 this.logger.warn(`[callback] No se pudo procesar skill "${nombre}": ${err.message}`);
             }
         }
         this.logger.log(`[callback] Skills procesadas: ${skillsNuevas} nuevas de ${(payload.skills_detectadas ?? []).length}`);
+        // 3b. Tecnologías — upsert en habilidades con tipo = 'tecnologia'
+        let tecnologiasNuevas = 0;
+        for (const tech of payload.tecnologias_detectadas ?? []){
+            const nombre = (typeof tech === 'string' ? tech : tech?.nombre)?.trim();
+            if (!nombre) continue;
+            try {
+                const habilidad = await this.prisma.habilidad.upsert({
+                    where: {
+                        nombre
+                    },
+                    create: {
+                        nombre
+                    },
+                    update: {}
+                });
+                const { created } = await this.upsertCandidatoHabilidad(candidatoId, habilidad.id, null, 'tecnologia');
+                if (created) tecnologiasNuevas++;
+            } catch (err) {
+                this.logger.warn(`[callback] No se pudo procesar tecnología "${nombre}": ${err.message}`);
+            }
+        }
+        this.logger.log(`[callback] Tecnologías procesadas: ${tecnologiasNuevas} nuevas de ${(payload.tecnologias_detectadas ?? []).length}`);
         // 4. Experiencia — insertar solo si no existe ya (misma empresa + cargo)
         let expNuevas = 0;
         for (const exp of payload.experiencia_laboral ?? []){
@@ -288,8 +318,7 @@ let CvService = class CvService {
             data: {
                 analisisDirectoId: analisis.id,
                 estado: 'completado',
-                detalles: `IA: ${skillsNuevas} skills, ${expNuevas} exp, ${eduNuevas} edu, ${idiomasNuevos} idiomas — score ${score}`,
-                webhookPayload: payload,
+                detalles: `IA: ${skillsNuevas} skills, ${tecnologiasNuevas} tecno, ${expNuevas} exp, ${eduNuevas} edu, ${idiomasNuevos} idiomas — score ${score}`,
                 duracionMs
             }
         });
@@ -297,7 +326,7 @@ let CvService = class CvService {
     }
     // Upsert de CandidatoHabilidad: inserta si no existe, no sobrescribe nivel manual.
     // Retorna { created: boolean }.
-    async upsertCandidatoHabilidad(candidatoId, habilidadId, nivel) {
+    async upsertCandidatoHabilidad(candidatoId, habilidadId, nivel, tipo) {
         try {
             await this.prisma.candidatoHabilidad.upsert({
                 where: {
@@ -309,9 +338,12 @@ let CvService = class CvService {
                 create: {
                     candidatoId,
                     habilidadId,
-                    nivel
+                    nivel,
+                    tipo
                 },
-                update: {}
+                update: {
+                    tipo
+                }
             });
             return {
                 created: true

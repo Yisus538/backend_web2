@@ -105,7 +105,92 @@ export class CvController {
       throw new BadRequestException('candidatoId requerido en el payload');
     }
 
-    const payload: CvAnalisisDto = { ...rawPayload, candidatoId } as CvAnalisisDto;
+    const p = rawPayload;
+    const datosRaw = p.datos_del_candidato ?? {};
+    const datos: Record<string, any> =
+      typeof datosRaw === 'string' && datosRaw.trim()
+        ? (() => { try { return JSON.parse(datosRaw); } catch { return {}; } })()
+        : (typeof datosRaw === 'object' ? datosRaw : {});
+
+    // ── Escalares: intentar múltiples nombres que Make puede usar ──
+    const nombre_completo =
+      p.nombre_completo ?? datos.nombre ?? p.nombre ?? p.name ?? p.full_name ?? null;
+
+    const correo_cv =
+      p.correo_cv ?? datos.email ?? datos.correo ?? p.correo ?? p.email ?? p.mail ?? null;
+
+    const telefono_cv =
+      p.telefono_cv ?? datos.telefono ?? p.telefono ?? p.phone ?? p.tel ?? p.celular ?? null;
+
+    const puesto_evaluado =
+      p.puesto_evaluado ?? datos.puesto ?? p.puesto ?? p.cargo_actual ??
+      p.titulo_profesional ?? p.titulo ?? p.position ?? null;
+
+    const motivo_rechazo =
+      p.motivo_rechazo ?? p.motivo ?? p.rechazo ?? null;
+
+    const resumen =
+      p.resumen ?? p.resumen_ia ?? p.summary ?? p.descripcion_perfil ?? null;
+
+    const confianza_datos =
+      p.confianza_datos ?? p.confianza ?? p.score ?? p.puntuacion ?? null;
+
+    // ── Arrays: normalizar aunque lleguen como string JSON serializado ──
+    // Make a veces envía arrays como string: "{\"key\":\"val\"}, {\"key\":\"val\"}"
+    const parseJsonArrayString = (v: any): any[] => {
+      if (Array.isArray(v)) return v;
+      if (typeof v !== 'string' || !v.trim()) return [];
+      const trimmed = v.trim();
+      if (trimmed.startsWith('[')) {
+        try { return JSON.parse(trimmed); } catch { /* continuar */ }
+      }
+      if (trimmed.startsWith('{')) {
+        try {
+          const parts = trimmed.split(/\}\s*,\s*\{/);
+          return parts.map((part, i) => {
+            let s = part.trim();
+            if (!s.startsWith('{')) s = '{' + s;
+            if (!s.endsWith('}')) s = s + '}';
+            return JSON.parse(s);
+          });
+        } catch { return []; }
+      }
+      // Strings planos separados por coma/punto y coma (para tecnologias)
+      return trimmed.split(/[,;]/).map((s: string) => s.trim()).filter(Boolean);
+    };
+
+    const tecnologias_detectadas: string[] = parseJsonArrayString(
+      p.tecnologias_detectadas ?? p.tecnologias ?? p.technologies ?? null,
+    );
+    const skills_detectadas    = parseJsonArrayString(p.skills_detectadas);
+    const experiencia_laboral  = parseJsonArrayString(p.experiencia_laboral);
+    const educacion            = parseJsonArrayString(p.educacion);
+    const idiomas              = parseJsonArrayString(p.idiomas);
+
+    // Log para confirmar qué valores se extrajeron
+    this.logger.log(
+      `[callback] Campos extraídos — nombre: ${nombre_completo}, correo: ${correo_cv}, ` +
+      `telefono: ${telefono_cv}, puesto: ${puesto_evaluado}, ` +
+      `skills: ${skills_detectadas.length}, tecno: ${tecnologias_detectadas.length}, ` +
+      `exp: ${experiencia_laboral.length}, edu: ${educacion.length}, idiomas: ${idiomas.length}`,
+    );
+
+    const payload: CvAnalisisDto = {
+      ...rawPayload,
+      candidatoId,
+      nombre_completo,
+      correo_cv,
+      telefono_cv,
+      puesto_evaluado,
+      motivo_rechazo,
+      resumen,
+      confianza_datos,
+      tecnologias_detectadas,
+      skills_detectadas,
+      experiencia_laboral,
+      educacion,
+      idiomas,
+    } as CvAnalisisDto;
 
     await this.cvService.procesarAnalisis(candidatoId, payload);
     return { ok: true, message: 'Análisis procesado' };
