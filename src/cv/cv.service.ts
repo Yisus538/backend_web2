@@ -86,7 +86,12 @@ export class CvService {
       aniosExp: h.aniosExp ?? null,
     }));
 
-    return { ...analisis, experienciaLaboral, habilidades };
+    const cvCompleto   = (analisis.cvCompleto ?? {}) as Record<string, any>;
+    const tecnologias: string[] = Array.isArray(cvCompleto.tecnologias_detectadas)
+      ? cvCompleto.tecnologias_detectadas
+      : [];
+
+    return { ...analisis, experienciaLaboral, habilidades, tecnologias };
   }
 
   // Llamado desde el callback de Make.com con el análisis procesado.

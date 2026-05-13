@@ -32,6 +32,7 @@ export class CvAnalisisDto {
   candidatoId: string;
   resumen: string;
   skills_detectadas: SkillDto[];
+  tecnologias_detectadas: string[];
   experiencia_laboral: ExperienciaIaDto[];
   educacion: EducacionIaDto[];
   idiomas: IdiomaIaDto[];
