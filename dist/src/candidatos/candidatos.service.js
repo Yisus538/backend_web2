@@ -92,6 +92,16 @@ let CandidatosService = class CandidatosService {
                             orderBy: {
                                 fechaInicio: 'desc'
                             }
+                        },
+                        analisisDirectos: {
+                            select: {
+                                score: true,
+                                cvCompleto: true
+                            },
+                            orderBy: {
+                                analizadoEl: 'desc'
+                            },
+                            take: 1
                         }
                     }
                 }
@@ -116,6 +126,10 @@ let CandidatosService = class CandidatosService {
         const skills = user.candidato?.habilidades ?? [];
         const skillNames = skills.map((h)=>h.habilidad.nombre);
         const totalExp = skills.reduce((max, h)=>Math.max(max, h.aniosExp ?? 0), 0);
+        const ultimoAnalisis = user.candidato?.analisisDirectos?.[0] ?? null;
+        const cvCompleto = ultimoAnalisis?.cvCompleto ?? {};
+        const resumen_ia = cvCompleto?.resumen ?? null;
+        const score_ia = ultimoAnalisis?.score ?? null;
         return {
             id: user.id,
             name: user.fullName,
@@ -129,7 +143,9 @@ let CandidatosService = class CandidatosService {
             idiomas: user.candidato?.idiomas ?? [],
             educacion: user.candidato?.educacion ?? [],
             experiencia: user.candidato?.experiencia ?? [],
-            cvUrl: postulacion?.urlCv ?? null
+            cvUrl: postulacion?.urlCv ?? null,
+            resumen_ia,
+            score_ia
         };
     }
     // ────────────────────────────────────────────────────────────

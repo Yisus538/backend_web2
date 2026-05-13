@@ -65,6 +65,11 @@ export class CandidatosService {
             idiomas:    { orderBy: { creadaEl: 'asc' } },
             experiencia: { orderBy: { fechaInicio: 'desc' } },
             educacion:   { orderBy: { fechaInicio: 'desc' } },
+            analisisDirectos: {
+              select: { score: true, cvCompleto: true },
+              orderBy: { analizadoEl: 'desc' },
+              take: 1,
+            },
           },
         },
       },
@@ -86,6 +91,11 @@ export class CandidatosService {
     const skillNames = skills.map((h) => h.habilidad.nombre);
     const totalExp = skills.reduce((max, h) => Math.max(max, h.aniosExp ?? 0), 0);
 
+    const ultimoAnalisis = user.candidato?.analisisDirectos?.[0] ?? null;
+    const cvCompleto     = (ultimoAnalisis?.cvCompleto ?? {}) as Record<string, any>;
+    const resumen_ia     = cvCompleto?.resumen ?? null;
+    const score_ia       = ultimoAnalisis?.score ?? null;
+
     return {
       id:         user.id,
       name:       user.fullName,
@@ -100,6 +110,8 @@ export class CandidatosService {
       educacion:  user.candidato?.educacion ?? [],
       experiencia: user.candidato?.experiencia ?? [],
       cvUrl:      postulacion?.urlCv ?? null,
+      resumen_ia,
+      score_ia,
     };
   }
 
