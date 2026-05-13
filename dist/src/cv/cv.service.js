@@ -63,16 +63,41 @@ function parseScore(raw) {
     return Math.round(n <= 1 ? n * 100 : n);
 }
 let CvService = class CvService {
-    // GET /api/cv/analisis — devuelve el último análisis del candidato
+    // GET /api/cv/analisis — devuelve el último análisis del candidato + experiencia laboral de la BD
     async getAnalisis(candidatoId) {
-        return this.prisma.analisisCvDirecto.findFirst({
-            where: {
-                candidatoId
-            },
-            orderBy: {
-                analizadoEl: 'desc'
-            }
-        });
+        const [analisis, experienciaLaboral] = await Promise.all([
+            this.prisma.analisisCvDirecto.findFirst({
+                where: {
+                    candidatoId
+                },
+                orderBy: {
+                    analizadoEl: 'desc'
+                }
+            }),
+            this.prisma.experienciaLaboral.findMany({
+                where: {
+                    candidatoId
+                },
+                orderBy: {
+                    fechaInicio: 'desc'
+                },
+                select: {
+                    id: true,
+                    empresa: true,
+                    cargo: true,
+                    fechaInicio: true,
+                    fechaFin: true,
+                    actual: true,
+                    descripcion: true,
+                    modalidad: true
+                }
+            })
+        ]);
+        if (!analisis) return null;
+        return {
+            ...analisis,
+            experienciaLaboral
+        };
     }
     // Llamado desde el callback de Make.com con el análisis procesado.
     // Graba el análisis en AnalisisCvDirecto y enriche el perfil del candidato

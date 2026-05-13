@@ -46,9 +46,9 @@ export class CvService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  // GET /api/cv/analisis — devuelve el último análisis del candidato + experiencia laboral de la BD
+  // GET /api/cv/analisis — devuelve el último análisis + experiencia y habilidades de la BD
   async getAnalisis(candidatoId: string) {
-    const [analisis, experienciaLaboral] = await Promise.all([
+    const [analisis, experienciaLaboral, habilidadesDetectadas] = await Promise.all([
       this.prisma.analisisCvDirecto.findFirst({
         where:   { candidatoId },
         orderBy: { analizadoEl: 'desc' },
@@ -67,11 +67,26 @@ export class CvService {
           modalidad:   true,
         },
       }),
+      this.prisma.candidatoHabilidad.findMany({
+        where:   { candidatoId },
+        select: {
+          nivel:    true,
+          aniosExp: true,
+          habilidad: { select: { nombre: true } },
+        },
+        orderBy: { aniosExp: 'desc' },
+      }),
     ]);
 
     if (!analisis) return null;
 
-    return { ...analisis, experienciaLaboral };
+    const habilidades = habilidadesDetectadas.map((h) => ({
+      nombre:   h.habilidad.nombre,
+      nivel:    h.nivel ?? null,
+      aniosExp: h.aniosExp ?? null,
+    }));
+
+    return { ...analisis, experienciaLaboral, habilidades };
   }
 
   // Llamado desde el callback de Make.com con el análisis procesado.
