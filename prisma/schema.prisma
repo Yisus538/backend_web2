@@ -79,6 +79,7 @@ model AnalisisCvDirecto {
   score              Int?
   apto               Boolean?
   motivoRechazo      String?             @map("motivo_rechazo")
+  resumen            String?
   cvCompleto         Json?               @map("cv_completo")
   evaluacionCompleta Json?               @map("evaluacion_completa")
   analizadoEl        DateTime            @default(now()) @map("analizado_el")

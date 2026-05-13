@@ -92,6 +92,17 @@ let CandidatosService = class CandidatosService {
                             orderBy: {
                                 fechaInicio: 'desc'
                             }
+                        },
+                        analisisDirectos: {
+                            select: {
+                                resumen: true,
+                                score: true,
+                                analizadoEl: true
+                            },
+                            orderBy: {
+                                analizadoEl: 'desc'
+                            },
+                            take: 1
                         }
                     }
                 }
@@ -116,6 +127,7 @@ let CandidatosService = class CandidatosService {
         const skills = user.candidato?.habilidades ?? [];
         const skillNames = skills.map((h)=>h.habilidad.nombre);
         const totalExp = skills.reduce((max, h)=>Math.max(max, h.aniosExp ?? 0), 0);
+        const ultimoAnalisis = user.candidato?.analisisDirectos?.[0] ?? null;
         return {
             id: user.id,
             name: user.fullName,
@@ -124,6 +136,8 @@ let CandidatosService = class CandidatosService {
             role: user.titulo ?? 'Candidato',
             location: user.ubicacion ?? '',
             biografia: user.candidato?.biografia ?? null,
+            resumen_ia: ultimoAnalisis?.resumen ?? null,
+            score_ia: ultimoAnalisis?.score ?? null,
             experience: totalExp > 0 ? `${totalExp} años` : 'Sin experiencia registrada',
             skills: skillNames,
             idiomas: user.candidato?.idiomas ?? [],

@@ -75,6 +75,7 @@ export class CvService {
         candidatoId,
         score,
         apto:               score !== null ? score >= 60 : null,
+        resumen:            payload.resumen ?? null,
         cvCompleto:         payload as any,
         evaluacionCompleta: payload as any,
       },

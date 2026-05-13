@@ -97,6 +97,7 @@ let CvService = class CvService {
                 candidatoId,
                 score,
                 apto: score !== null ? score >= 60 : null,
+                resumen: payload.resumen ?? null,
                 cvCompleto: payload,
                 evaluacionCompleta: payload
             }
