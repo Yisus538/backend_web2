@@ -67,7 +67,7 @@ let CvController = class CvController {
             this.logger.warn('[callback] Intento con secret inválido');
             throw new _common.UnauthorizedException('Secret inválido');
         }
-        this.logger.log('[callback] Payload crudo recibido: ' + JSON.stringify(rawPayload));
+        this.logger.log('[callback] v2 — Payload crudo recibido: ' + JSON.stringify(rawPayload));
         const candidatoId = rawPayload?.candidatoId || rawPayload?.candidato_id || rawPayload?.CandidatoId || rawPayload?.CANDIDATOID || candidatoIdQuery || '';
         if (!candidatoId) {
             this.logger.error('[callback] candidatoId ausente. Campos recibidos: [' + Object.keys(rawPayload ?? {}).join(', ') + ']');

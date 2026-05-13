@@ -86,7 +86,7 @@ export class CvController {
       throw new UnauthorizedException('Secret inválido');
     }
 
-    this.logger.log('[callback] Payload crudo recibido: ' + JSON.stringify(rawPayload));
+    this.logger.log('[callback] v2 — Payload crudo recibido: ' + JSON.stringify(rawPayload));
 
     const candidatoId =
       rawPayload?.candidatoId ||

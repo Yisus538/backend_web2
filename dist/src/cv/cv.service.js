@@ -133,6 +133,43 @@ let CvService = class CvService {
     async procesarAnalisis(candidatoId, payload) {
         const startMs = Date.now();
         this.logger.log(`[callback] Procesando análisis para candidato ${candidatoId}`);
+        // Parsear campos que Make envía como string JSON en lugar de array real.
+        const asArray = (v)=>{
+            if (Array.isArray(v)) return v;
+            if (typeof v !== 'string' || !v.trim()) return [];
+            const t = v.trim();
+            // Intento 1: ya es JSON array
+            if (t.startsWith('[')) {
+                try {
+                    return JSON.parse(t);
+                } catch  {}
+            }
+            // Intento 2: envolver en [] — funciona con "{...}, {...}" de Make
+            if (t.startsWith('{')) {
+                try {
+                    return JSON.parse('[' + t + ']');
+                } catch  {}
+            }
+            // Intento 3: split regex para JSON anidado complejo
+            if (t.startsWith('{')) {
+                try {
+                    return t.split(/\}\s*,\s*\{/).map((p)=>{
+                        let s = p.trim();
+                        if (!s.startsWith('{')) s = '{' + s;
+                        if (!s.endsWith('}')) s = s + '}';
+                        return JSON.parse(s);
+                    });
+                } catch  {}
+            }
+            // Intento 4: strings simples separados por coma (tecnologías)
+            return t.split(/[,;]/).map((s)=>s.trim()).filter(Boolean);
+        };
+        const skills = asArray(payload.skills_detectadas);
+        const tecnologias = asArray(payload.tecnologias_detectadas);
+        const expLaboral = asArray(payload.experiencia_laboral);
+        const educacion = asArray(payload.educacion);
+        const idiomas = asArray(payload.idiomas);
+        this.logger.log(`[callback] Arrays recibidos — skills: ${skills.length}, tecno: ${tecnologias.length}, ` + `exp: ${expLaboral.length}, edu: ${educacion.length}, idiomas: ${idiomas.length}`);
         // 1. Asegurar que existe el perfil de candidato (puede no existir aún)
         await this.prisma.candidato.upsert({
             where: {
@@ -161,8 +198,8 @@ let CvService = class CvService {
         this.logger.log(`[callback] AnalisisCvDirecto creado: ${analisis.id} — score: ${score}`);
         // 3. Habilidades — upsert sin sobrescribir datos manuales, tipo = 'habilidad'
         let skillsNuevas = 0;
-        for (const s of payload.skills_detectadas ?? []){
-            const nombre = s.skill?.trim();
+        for (const s of skills){
+            const nombre = (typeof s === 'string' ? s : s.skill)?.trim();
             if (!nombre) continue;
             try {
                 const habilidad = await this.prisma.habilidad.upsert({
@@ -180,10 +217,10 @@ let CvService = class CvService {
                 this.logger.warn(`[callback] No se pudo procesar skill "${nombre}": ${err.message}`);
             }
         }
-        this.logger.log(`[callback] Skills procesadas: ${skillsNuevas} nuevas de ${(payload.skills_detectadas ?? []).length}`);
+        this.logger.log(`[callback] Skills procesadas: ${skillsNuevas} nuevas de ${skills.length}`);
         // 3b. Tecnologías — upsert en habilidades con tipo = 'tecnologia'
         let tecnologiasNuevas = 0;
-        for (const tech of payload.tecnologias_detectadas ?? []){
+        for (const tech of tecnologias){
             const nombre = (typeof tech === 'string' ? tech : tech?.nombre)?.trim();
             if (!nombre) continue;
             try {
@@ -202,10 +239,10 @@ let CvService = class CvService {
                 this.logger.warn(`[callback] No se pudo procesar tecnología "${nombre}": ${err.message}`);
             }
         }
-        this.logger.log(`[callback] Tecnologías procesadas: ${tecnologiasNuevas} nuevas de ${(payload.tecnologias_detectadas ?? []).length}`);
+        this.logger.log(`[callback] Tecnologías procesadas: ${tecnologiasNuevas} nuevas de ${tecnologias.length}`);
         // 4. Experiencia — insertar solo si no existe ya (misma empresa + cargo)
         let expNuevas = 0;
-        for (const exp of payload.experiencia_laboral ?? []){
+        for (const exp of expLaboral){
             const { empresa, cargo, periodo, descripcion } = exp;
             if (!empresa?.trim() || !cargo?.trim()) continue;
             try {
@@ -242,10 +279,10 @@ let CvService = class CvService {
                 this.logger.warn(`[callback] No se pudo procesar experiencia "${empresa}/${cargo}": ${err.message}`);
             }
         }
-        this.logger.log(`[callback] Experiencia: ${expNuevas} nuevas de ${(payload.experiencia_laboral ?? []).length}`);
+        this.logger.log(`[callback] Experiencia: ${expNuevas} nuevas de ${expLaboral.length}`);
         // 5. Educación — insertar solo si no existe ya (misma institución + título)
         let eduNuevas = 0;
-        for (const edu of payload.educacion ?? []){
+        for (const edu of educacion){
             const { institucion, titulo, periodo, observaciones } = edu;
             if (!institucion?.trim() || !titulo?.trim()) continue;
             try {
@@ -281,10 +318,10 @@ let CvService = class CvService {
                 this.logger.warn(`[callback] No se pudo procesar educación "${institucion}/${titulo}": ${err.message}`);
             }
         }
-        this.logger.log(`[callback] Educación: ${eduNuevas} nuevas de ${(payload.educacion ?? []).length}`);
+        this.logger.log(`[callback] Educación: ${eduNuevas} nuevas de ${educacion.length}`);
         // 6. Idiomas — insertar solo si el candidato no tiene ese idioma ya
         let idiomasNuevos = 0;
-        for (const id of payload.idiomas ?? []){
+        for (const id of idiomas){
             const { idioma, nivel } = id;
             if (!idioma?.trim()) continue;
             try {
@@ -311,7 +348,7 @@ let CvService = class CvService {
                 this.logger.warn(`[callback] No se pudo procesar idioma "${idioma}": ${err.message}`);
             }
         }
-        this.logger.log(`[callback] Idiomas: ${idiomasNuevos} nuevos de ${(payload.idiomas ?? []).length}`);
+        this.logger.log(`[callback] Idiomas: ${idiomasNuevos} nuevos de ${idiomas.length}`);
         // 7. Registrar en historial de análisis
         const duracionMs = Date.now() - startMs;
         await this.prisma.historialAnalisis.create({
@@ -348,7 +385,8 @@ let CvService = class CvService {
             return {
                 created: true
             };
-        } catch  {
+        } catch (err) {
+            this.logger.error(`[upsert] habilidadId=${habilidadId}: ${err.message}`);
             return {
                 created: false
             };
