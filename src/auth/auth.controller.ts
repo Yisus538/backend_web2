@@ -3,6 +3,7 @@ import {
   Post,
   Get,
   Patch,
+  Delete,
   Body,
   Query,
   Req,
@@ -113,6 +114,18 @@ export class AuthController {
   async updateMe(@CurrentUser() user: JwtPayload, @Body() dto: UpdateProfileDto) {
     const updated = await this.authService.updateMe(user.userId, dto);
     return { ok: true, message: 'Perfil actualizado', data: { user: updated } };
+  }
+
+  // ── DELETE /api/auth/me ───────────────────────────────────────────────────
+  @Delete('me')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async deleteAccount(
+    @CurrentUser() user: JwtPayload,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    await this.authService.deleteAccount(user.userId);
+    clearAuthCookies(res);
   }
 
   // ── GET /api/auth/verify-email?token=xxx ─────────────────────────────────

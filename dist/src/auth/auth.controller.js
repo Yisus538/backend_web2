@@ -124,6 +124,11 @@ let AuthController = class AuthController {
             }
         };
     }
+    // ── DELETE /api/auth/me ───────────────────────────────────────────────────
+    async deleteAccount(user, res) {
+        await this.authService.deleteAccount(user.userId);
+        clearAuthCookies(res);
+    }
     // ── GET /api/auth/verify-email?token=xxx ─────────────────────────────────
     async verifyEmail(token) {
         const message = await this.authService.verifyEmail(token);
@@ -258,6 +263,21 @@ _ts_decorate([
     ]),
     _ts_metadata("design:returntype", Promise)
 ], AuthController.prototype, "updateMe", null);
+_ts_decorate([
+    (0, _common.Delete)('me'),
+    (0, _common.UseGuards)(_jwtauthguard.JwtAuthGuard),
+    (0, _common.HttpCode)(_common.HttpStatus.NO_CONTENT),
+    _ts_param(0, (0, _currentuserdecorator.CurrentUser)()),
+    _ts_param(1, (0, _common.Res)({
+        passthrough: true
+    })),
+    _ts_metadata("design:type", Function),
+    _ts_metadata("design:paramtypes", [
+        typeof _currentuserdecorator.JwtPayload === "undefined" ? Object : _currentuserdecorator.JwtPayload,
+        typeof _express.Response === "undefined" ? Object : _express.Response
+    ]),
+    _ts_metadata("design:returntype", Promise)
+], AuthController.prototype, "deleteAccount", null);
 _ts_decorate([
     (0, _common.Get)('verify-email'),
     _ts_param(0, (0, _common.Query)('token')),

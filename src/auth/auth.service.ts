@@ -272,6 +272,14 @@ export class AuthService {
   // ────────────────────────────────────────────────────────────
   // PATCH /api/auth/me
   // ────────────────────────────────────────────────────────────
+  // ────────────────────────────────────────────────────────────
+  // DELETE /api/auth/me
+  // Elimina la cuenta del usuario y todo su contenido (cascade).
+  // ────────────────────────────────────────────────────────────
+  async deleteAccount(userId: string): Promise<void> {
+    await this.prisma.user.delete({ where: { id: userId } });
+  }
+
   async updateMe(userId: string, dto: UpdateProfileDto) {
     const { fullName, telefono, ubicacion, titulo, avatarUrl } = dto;
 
