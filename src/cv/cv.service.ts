@@ -234,12 +234,13 @@ export class CvService {
           await this.prisma.experienciaLaboral.create({
             data: {
               candidatoId,
-              empresa:     empresa.trim(),
-              cargo:       cargo.trim(),
+              empresa:          empresa.trim(),
+              cargo:            cargo.trim(),
               fechaInicio,
               fechaFin,
               actual,
-              descripcion: desc,
+              descripcion:      desc,
+              analisisOrigenId: analisis.id,
             },
           });
           expNuevas++;
@@ -268,12 +269,13 @@ export class CvService {
           await this.prisma.educacion.create({
             data: {
               candidatoId,
-              institucion:  institucion.trim(),
-              titulo:       titulo.trim(),
+              institucion:      institucion.trim(),
+              titulo:           titulo.trim(),
               fechaInicio,
               fechaFin,
               cursando,
-              descripcion:  observaciones?.trim() || null,
+              descripcion:      observaciones?.trim() || null,
+              analisisOrigenId: analisis.id,
             },
           });
           eduNuevas++;
@@ -300,8 +302,9 @@ export class CvService {
           await this.prisma.idioma.create({
             data: {
               candidatoId,
-              idioma: idioma.trim(),
-              nivel:  normalizarNivelIdioma(nivel),
+              idioma:           idioma.trim(),
+              nivel:            normalizarNivelIdioma(nivel),
+              analisisOrigenId: analisis.id,
             },
           });
           idiomasNuevos++;
@@ -324,6 +327,25 @@ export class CvService {
     });
 
     this.logger.log(`[callback] Análisis ${analisis.id} procesado en ${duracionMs}ms`);
+  }
+
+  // GET /api/cv/analisis-activo — retorna el análisis más reciente con sus datos
+  async getAnalisisActivo(candidatoId: string) {
+    return this.prisma.analisisCvDirecto.findFirst({
+      where:   { candidatoId },
+      orderBy: { analizadoEl: 'desc' },
+      select: {
+        id:              true,
+        score:           true,
+        apto:            true,
+        resumen:         true,
+        puestoEvaluado:  true,
+        analizadoEl:     true,
+        educacionGenerada:   { select: { id: true, titulo: true, institucion: true } },
+        experienciaGenerada: { select: { id: true, cargo: true, empresa: true } },
+        idiomasGenerados:    { select: { id: true, idioma: true, nivel: true } },
+      },
+    });
   }
 
   // Upsert de CandidatoHabilidad: inserta si no existe, no sobrescribe nivel manual.

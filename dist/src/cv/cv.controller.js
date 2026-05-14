@@ -45,6 +45,21 @@ let CvController = class CvController {
         };
     }
     // ────────────────────────────────────────────────────────────────
+    // GET /api/cv/analisis-activo
+    // Retorna el análisis más reciente del candidato autenticado,
+    // incluyendo educación, experiencia e idiomas generados.
+    // ────────────────────────────────────────────────────────────────
+    async getAnalisisActivo(user) {
+        const analisis = await this.cvService.getAnalisisActivo(user.userId);
+        return {
+            ok: true,
+            message: 'Análisis obtenido',
+            data: {
+                analisis
+            }
+        };
+    }
+    // ────────────────────────────────────────────────────────────────
     // GET /api/cv/analisis?candidatoId=<uuid>
     // Devuelve el último análisis IA del candidato.
     // ────────────────────────────────────────────────────────────────
@@ -197,6 +212,16 @@ _ts_decorate([
     ]),
     _ts_metadata("design:returntype", Promise)
 ], CvController.prototype, "analyze", null);
+_ts_decorate([
+    (0, _common.Get)('analisis-activo'),
+    (0, _common.UseGuards)(_jwtauthguard.JwtAuthGuard),
+    _ts_param(0, (0, _currentuserdecorator.CurrentUser)()),
+    _ts_metadata("design:type", Function),
+    _ts_metadata("design:paramtypes", [
+        typeof _currentuserdecorator.JwtPayload === "undefined" ? Object : _currentuserdecorator.JwtPayload
+    ]),
+    _ts_metadata("design:returntype", Promise)
+], CvController.prototype, "getAnalisisActivo", null);
 _ts_decorate([
     (0, _common.Get)('analisis'),
     (0, _common.UseGuards)(_jwtauthguard.JwtAuthGuard),

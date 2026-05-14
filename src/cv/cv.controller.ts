@@ -54,6 +54,18 @@ export class CvController {
   }
 
   // ────────────────────────────────────────────────────────────────
+  // GET /api/cv/analisis-activo
+  // Retorna el análisis más reciente del candidato autenticado,
+  // incluyendo educación, experiencia e idiomas generados.
+  // ────────────────────────────────────────────────────────────────
+  @Get('analisis-activo')
+  @UseGuards(JwtAuthGuard)
+  async getAnalisisActivo(@CurrentUser() user: JwtPayload) {
+    const analisis = await this.cvService.getAnalisisActivo(user.userId);
+    return { ok: true, message: 'Análisis obtenido', data: { analisis } };
+  }
+
+  // ────────────────────────────────────────────────────────────────
   // GET /api/cv/analisis?candidatoId=<uuid>
   // Devuelve el último análisis IA del candidato.
   // ────────────────────────────────────────────────────────────────

@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>16/16</span>
+                <span class='fraction'>0/16</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>6/6</span>
+                <span class='fraction'>0/6</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>7/7</span>
+                <span class='fraction'>0/7</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>9/9</span>
+                <span class='fraction'>0/9</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line high'></div>
+    <div class='status-line low'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -76,31 +76,31 @@
 <a name='L11'></a><a href='#L11'>11</a>
 <a name='L12'></a><a href='#L12'>12</a>
 <a name='L13'></a><a href='#L13'>13</a>
-<a name='L14'></a><a href='#L14'>14</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L14'></a><a href='#L14'>14</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">8x</span>
-<span class="cline-any cline-yes">8x</span>
-<span class="cline-any cline-yes">8x</span>
-<span class="cline-any cline-yes">8x</span>
-<span class="cline-any cline-yes">8x</span>
-<span class="cline-any cline-yes">7x</span>
-<span class="cline-any cline-yes">9x</span>
-<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">export function calcMatchScore(
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js"><span class="cstat-no" title="statement not covered" >export function <span class="fstat-no" title="function not covered" >c</span>alcMatchScore(</span>
   candidateSkills: string[],
   requisitos: unknown,
 ): number {
-  const req = requisitos as Record&lt;string, { selected: boolean; label: string }[]&gt; | null;
-  const techSkills = (req?.techSkills ?? []).filter(s =&gt; s.selected).map(s =&gt; s.label.toLowerCase());
-  const softSkills = (req?.softSkills ?? []).filter(s =&gt; s.selected).map(s =&gt; s.label.toLowerCase());
-  const allRequired = [...techSkills, ...softSkills];
-  if (allRequired.length === 0) return 75;
-  const lower   = candidateSkills.map(s =&gt; s.toLowerCase());
-  const matches = allRequired.filter(r =&gt; lower.includes(r));
-  return Math.round((matches.length / allRequired.length) * 100);
+  const req = <span class="cstat-no" title="statement not covered" >requisitos as Record&lt;string, { selected: boolean; label: string }[]&gt; | null;</span>
+  const techSkills = <span class="cstat-no" title="statement not covered" >(req?.techSkills ?? []).filter(<span class="fstat-no" title="function not covered" >s </span>=&gt; <span class="cstat-no" title="statement not covered" >s.selected)</span>.map(<span class="fstat-no" title="function not covered" >s </span>=&gt; <span class="cstat-no" title="statement not covered" >s.label.toLowerCase())</span>;</span>
+  const softSkills = <span class="cstat-no" title="statement not covered" >(req?.softSkills ?? []).filter(<span class="fstat-no" title="function not covered" >s </span>=&gt; <span class="cstat-no" title="statement not covered" >s.selected)</span>.map(<span class="fstat-no" title="function not covered" >s </span>=&gt; <span class="cstat-no" title="statement not covered" >s.label.toLowerCase())</span>;</span>
+  const allRequired = <span class="cstat-no" title="statement not covered" >[...techSkills, ...softSkills];</span>
+<span class="cstat-no" title="statement not covered" >  if (allRequired.length === 0) <span class="cstat-no" title="statement not covered" >return 75;</span></span>
+  const lower   = <span class="cstat-no" title="statement not covered" >candidateSkills.map(<span class="fstat-no" title="function not covered" >s </span>=&gt; <span class="cstat-no" title="statement not covered" >s.toLowerCase())</span>;</span>
+  const matches = <span class="cstat-no" title="statement not covered" >allRequired.filter(<span class="fstat-no" title="function not covered" >r </span>=&gt; <span class="cstat-no" title="statement not covered" >lower.includes(r))</span>;</span>
+<span class="cstat-no" title="statement not covered" >  return Math.round((matches.length / allRequired.length) * 100);</span>
 }
 &nbsp;</pre></td></tr></table></pre>
 
@@ -109,7 +109,7 @@
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-05-14T06:00:15.684Z
+                at 2026-05-14T20:11:08.806Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

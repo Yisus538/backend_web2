@@ -85,6 +85,9 @@ model AnalisisCvDirecto {
   analizadoEl        DateTime            @default(now()) @map("analizado_el")
   candidato          Candidato?          @relation(fields: [candidatoId], references: [usuarioId])
   historialAnalisis  HistorialAnalisis[]
+  educacionGenerada   Educacion[]          @relation("EducacionAnalisis")
+  experienciaGenerada ExperienciaLaboral[] @relation("ExperienciaAnalisis")
+  idiomasGenerados    Idioma[]             @relation("IdiomaAnalisis")
 
   @@map("analisis_cv_directo")
 }
@@ -265,47 +268,53 @@ model RolCatalogo {
 }
 
 model Educacion {
-  id            String    @id @default(uuid())
-  candidatoId   String    @map("candidato_id")
-  institucion   String
-  titulo        String
-  campo         String?
-  fechaInicio   String    @map("fecha_inicio")
-  fechaFin      String?   @map("fecha_fin")
-  cursando      Boolean   @default(false)
-  descripcion   String?
-  creadaEl      DateTime  @default(now()) @map("creada_el")
-  actualizadoEl DateTime  @default(now()) @updatedAt @map("actualizado_el")
-  candidato     Candidato @relation(fields: [candidatoId], references: [usuarioId], onDelete: Cascade)
+  id               String             @id @default(uuid())
+  candidatoId      String             @map("candidato_id")
+  institucion      String
+  titulo           String
+  campo            String?
+  fechaInicio      String             @map("fecha_inicio")
+  fechaFin         String?            @map("fecha_fin")
+  cursando         Boolean            @default(false)
+  descripcion      String?
+  creadaEl         DateTime           @default(now()) @map("creada_el")
+  actualizadoEl    DateTime           @default(now()) @updatedAt @map("actualizado_el")
+  analisisOrigenId String?            @map("analisis_origen_id")
+  analisisOrigen   AnalisisCvDirecto? @relation("EducacionAnalisis", fields: [analisisOrigenId], references: [id], onDelete: SetNull)
+  candidato        Candidato          @relation(fields: [candidatoId], references: [usuarioId], onDelete: Cascade)
 
   @@map("educacion")
 }
 
 model ExperienciaLaboral {
-  id            String    @id @default(uuid())
-  candidatoId   String    @map("candidato_id")
-  empresa       String
-  cargo         String
-  fechaInicio   String    @map("fecha_inicio")
-  fechaFin      String?   @map("fecha_fin")
-  actual        Boolean   @default(false)
-  descripcion   String?
-  modalidad     String?
-  creadaEl      DateTime  @default(now()) @map("creada_el")
-  actualizadoEl DateTime  @default(now()) @updatedAt @map("actualizado_el")
-  candidato     Candidato @relation(fields: [candidatoId], references: [usuarioId], onDelete: Cascade)
+  id               String             @id @default(uuid())
+  candidatoId      String             @map("candidato_id")
+  empresa          String
+  cargo            String
+  fechaInicio      String             @map("fecha_inicio")
+  fechaFin         String?            @map("fecha_fin")
+  actual           Boolean            @default(false)
+  descripcion      String?
+  modalidad        String?
+  creadaEl         DateTime           @default(now()) @map("creada_el")
+  actualizadoEl    DateTime           @default(now()) @updatedAt @map("actualizado_el")
+  analisisOrigenId String?            @map("analisis_origen_id")
+  analisisOrigen   AnalisisCvDirecto? @relation("ExperienciaAnalisis", fields: [analisisOrigenId], references: [id], onDelete: SetNull)
+  candidato        Candidato          @relation(fields: [candidatoId], references: [usuarioId], onDelete: Cascade)
 
   @@map("experiencia_laboral")
 }
 
 model Idioma {
-  id            String    @id @default(uuid())
-  candidatoId   String    @map("candidato_id")
-  idioma        String
-  nivel         String
-  certificacion String?
-  creadaEl      DateTime  @default(now()) @map("creada_el")
-  candidato     Candidato @relation(fields: [candidatoId], references: [usuarioId], onDelete: Cascade)
+  id               String             @id @default(uuid())
+  candidatoId      String             @map("candidato_id")
+  idioma           String
+  nivel            String
+  certificacion    String?
+  creadaEl         DateTime           @default(now()) @map("creada_el")
+  analisisOrigenId String?            @map("analisis_origen_id")
+  analisisOrigen   AnalisisCvDirecto? @relation("IdiomaAnalisis", fields: [analisisOrigenId], references: [id], onDelete: SetNull)
+  candidato        Candidato          @relation(fields: [candidatoId], references: [usuarioId], onDelete: Cascade)
 
   @@map("idiomas")
 }

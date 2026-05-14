@@ -16,7 +16,7 @@ export class CurriculumService {
   }
 
   async addIdioma(userId: string, body: any) {
-    const { idioma, nivel, certificacion } = body;
+    const { idioma, nivel, certificacion, analisisOrigenId } = body;
     if (!idioma || !nivel) throw new BadRequestException('Idioma y nivel son requeridos');
     const validNiveles = ['basico', 'intermedio', 'avanzado', 'nativo'];
     if (!validNiveles.includes(nivel)) {
@@ -29,10 +29,11 @@ export class CurriculumService {
 
     return this.prisma.idioma.create({
       data: {
-        candidatoId:   userId,
+        candidatoId:      userId,
         idioma,
         nivel,
-        certificacion: certificacion || null,
+        certificacion:    certificacion    || null,
+        analisisOrigenId: analisisOrigenId || null,
       },
     });
   }
@@ -63,20 +64,21 @@ export class CurriculumService {
   }
 
   async addExperiencia(userId: string, body: any) {
-    const { empresa, cargo, fechaInicio, fechaFin, actual, descripcion, modalidad } = body;
+    const { empresa, cargo, fechaInicio, fechaFin, actual, descripcion, modalidad, analisisOrigenId } = body;
     if (!empresa || !cargo || !fechaInicio) {
       throw new BadRequestException('Empresa, cargo y fecha de inicio son requeridos');
     }
     return this.prisma.experienciaLaboral.create({
       data: {
-        candidatoId: userId,
+        candidatoId:      userId,
         empresa,
         cargo,
         fechaInicio,
-        fechaFin:    actual ? null : (fechaFin || null),
-        actual:      !!actual,
-        descripcion: descripcion || null,
-        modalidad:   modalidad   || null,
+        fechaFin:         actual ? null : (fechaFin || null),
+        actual:           !!actual,
+        descripcion:      descripcion      || null,
+        modalidad:        modalidad        || null,
+        analisisOrigenId: analisisOrigenId || null,
       },
     });
   }
@@ -112,20 +114,21 @@ export class CurriculumService {
   }
 
   async addEducacion(userId: string, body: any) {
-    const { institucion, titulo, campo, fechaInicio, fechaFin, cursando, descripcion } = body;
+    const { institucion, titulo, campo, fechaInicio, fechaFin, cursando, descripcion, analisisOrigenId } = body;
     if (!institucion || !titulo || !fechaInicio) {
       throw new BadRequestException('Institución, título y fecha de inicio son requeridos');
     }
     return this.prisma.educacion.create({
       data: {
-        candidatoId: userId,
+        candidatoId:      userId,
         institucion,
         titulo,
-        campo:       campo       || null,
+        campo:            campo            || null,
         fechaInicio,
-        fechaFin:    cursando ? null : (fechaFin || null),
-        cursando:    !!cursando,
-        descripcion: descripcion || null,
+        fechaFin:         cursando ? null : (fechaFin || null),
+        cursando:         !!cursando,
+        descripcion:      descripcion      || null,
+        analisisOrigenId: analisisOrigenId || null,
       },
     });
   }
