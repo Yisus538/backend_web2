@@ -11,6 +11,9 @@ import { CvModule } from './cv/cv.module';
 import { UploadModule } from './upload/upload.module';
 import { HealthModule } from './health/health.module';
 import { AdminModule } from './admin/admin.module';
+import { CloudinaryModule } from './cloudinary/cloudinary.module';
+import { NavigationModule } from './navigation/navigation.module';
+import { CurriculumModule } from './curriculum/curriculum.module';
 
 @Module({
   imports: [
@@ -20,14 +23,17 @@ import { AdminModule } from './admin/admin.module';
     ThrottlerModule.forRoot([
       {
         name: 'default',
-        ttl: 900_000, 
-        limit: 100,    
+        ttl: 900_000,
+        limit: 100,
       },
     ]),
 
     // ── Core ──
     PrismaModule,
     EmailModule,
+    CloudinaryModule,
+    NavigationModule,
+    CurriculumModule,
 
     // ── Feature modules ──
     AuthModule,

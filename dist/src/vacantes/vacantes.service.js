@@ -10,6 +10,7 @@ Object.defineProperty(exports, "VacantesService", {
 });
 const _common = require("@nestjs/common");
 const _prismaservice = require("../prisma/prisma.service");
+const _matchscoreutils = require("../common/utils/match-score.utils");
 function _ts_decorate(decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
@@ -20,19 +21,6 @@ function _ts_metadata(k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 }
 const PAGE_LIMIT_MAX = 100;
-// Réplica exacta del helper original (también presente en candidatos)
-function calcMatchScore(candidateSkills, requisitos) {
-    const techSkills = (requisitos?.techSkills ?? []).filter((s)=>s.selected).map((s)=>s.label.toLowerCase());
-    const softSkills = (requisitos?.softSkills ?? []).filter((s)=>s.selected).map((s)=>s.label.toLowerCase());
-    const allRequired = [
-        ...techSkills,
-        ...softSkills
-    ];
-    if (allRequired.length === 0) return 75;
-    const lower = candidateSkills.map((s)=>s.toLowerCase());
-    const matches = allRequired.filter((r)=>lower.includes(r));
-    return Math.round(matches.length / allRequired.length * 100);
-}
 function formatSalary(amount) {
     if (!amount) return '';
     if (amount >= 1_000_000) return `$${(amount / 1_000_000).toFixed(1)}M`;
@@ -444,7 +432,7 @@ let VacantesService = class VacantesService {
         // 4. Calcular match score y ordenar
         const scored = vacantes.map((v)=>{
             const req = v.requisitos;
-            const score = candidateSkills.length > 0 ? calcMatchScore(candidateSkills, req) : null;
+            const score = candidateSkills.length > 0 ? (0, _matchscoreutils.calcMatchScore)(candidateSkills, req) : null;
             const topSkills = (req?.techSkills ?? []).filter((s)=>s.selected).map((s)=>s.label).slice(0, 4);
             return {
                 id: v.id,
@@ -541,7 +529,7 @@ let VacantesService = class VacantesService {
         });
         const candidateSkills = (candidato?.habilidades ?? []).map((h)=>h.habilidad.nombre);
         // ── Match score ──────────────────────────────────────────
-        const matchScore = calcMatchScore(candidateSkills, item.requisitos);
+        const matchScore = (0, _matchscoreutils.calcMatchScore)(candidateSkills, item.requisitos);
         // ── Formatear requisitos técnicos para la UI ─────────────
         const req = item.requisitos;
         const techSkills = (req?.techSkills ?? []).filter((s)=>s.selected).map((s)=>({

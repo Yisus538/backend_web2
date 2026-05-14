@@ -204,7 +204,7 @@ export class CvController {
     formData.append('candidatoId', candidatoId);
     formData.append(
       'documento_cv',
-      new Blob([file.buffer], { type: file.mimetype }),
+      new Blob([file.buffer as unknown as ArrayBuffer], { type: file.mimetype }),
       file.originalname,
     );
 

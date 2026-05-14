@@ -21,6 +21,9 @@ const _cvmodule = require("./cv/cv.module");
 const _uploadmodule = require("./upload/upload.module");
 const _healthmodule = require("./health/health.module");
 const _adminmodule = require("./admin/admin.module");
+const _cloudinarymodule = require("./cloudinary/cloudinary.module");
+const _navigationmodule = require("./navigation/navigation.module");
+const _curriculummodule = require("./curriculum/curriculum.module");
 function _ts_decorate(decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
@@ -45,6 +48,9 @@ AppModule = _ts_decorate([
             // ── Core ──
             _prismamodule.PrismaModule,
             _emailmodule.EmailModule,
+            _cloudinarymodule.CloudinaryModule,
+            _navigationmodule.NavigationModule,
+            _curriculummodule.CurriculumModule,
             // ── Feature modules ──
             _authmodule.AuthModule,
             _vacantesmodule.VacantesModule,

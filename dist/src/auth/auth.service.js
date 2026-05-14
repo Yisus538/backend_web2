@@ -12,7 +12,7 @@ const _common = require("@nestjs/common");
 const _jsonwebtoken = /*#__PURE__*/ _interop_require_wildcard(require("jsonwebtoken"));
 const _prismaservice = require("../prisma/prisma.service");
 const _emailservice = require("../email/email.service");
-const _navservice = require("./nav.service");
+const _navservice = require("../navigation/nav.service");
 const _passwordutils = require("../common/utils/password.utils");
 const _tokenutils = require("../common/utils/token.utils");
 function _getRequireWildcardCache(nodeInterop) {

@@ -13,9 +13,9 @@ const _passport = require("@nestjs/passport");
 const _jwt = require("@nestjs/jwt");
 const _authcontroller = require("./auth.controller");
 const _authservice = require("./auth.service");
-const _navservice = require("./nav.service");
 const _jwtstrategy = require("./jwt.strategy");
 const _emailmodule = require("../email/email.module");
+const _navigationmodule = require("../navigation/navigation.module");
 function _ts_decorate(decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
@@ -34,19 +34,20 @@ AuthModule = _ts_decorate([
                     expiresIn: process.env.JWT_EXPIRES_IN || '1h'
                 }
             }),
-            _emailmodule.EmailModule
+            _emailmodule.EmailModule,
+            _navigationmodule.NavigationModule
         ],
         controllers: [
             _authcontroller.AuthController
         ],
         providers: [
             _authservice.AuthService,
-            _navservice.NavService,
             _jwtstrategy.JwtStrategy
         ],
         exports: [
             _jwtstrategy.JwtStrategy,
-            _passport.PassportModule
+            _passport.PassportModule,
+            _navigationmodule.NavigationModule
         ]
     })
 ], AuthModule);

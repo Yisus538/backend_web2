@@ -12,6 +12,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { CandidatosService } from './candidatos.service';
+import { CurriculumService } from '../curriculum/curriculum.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -20,7 +21,10 @@ import { CurrentUser, JwtPayload } from '../common/decorators/current-user.decor
 @Controller('candidatos')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class CandidatosController {
-  constructor(private svc: CandidatosService) { }
+  constructor(
+    private svc: CandidatosService,
+    private curriculumSvc: CurriculumService,
+  ) {}
 
   // ────────────────────────────────────────────────────────────
   // GET /api/candidatos  — solo empresas
@@ -48,7 +52,7 @@ export class CandidatosController {
   @Get('idiomas')
   @Roles('candidate')
   async getIdiomas(@CurrentUser() u: JwtPayload) {
-    const idiomas = await this.svc.getIdiomas(u.userId);
+    const idiomas = await this.curriculumSvc.getIdiomas(u.userId);
     return { ok: true, message: 'Idiomas obtenidos', data: { idiomas } };
   }
 
@@ -56,7 +60,7 @@ export class CandidatosController {
   @Roles('candidate')
   @HttpCode(HttpStatus.CREATED)
   async addIdioma(@CurrentUser() u: JwtPayload, @Body() body: any) {
-    const idioma = await this.svc.addIdioma(u.userId, body);
+    const idioma = await this.curriculumSvc.addIdioma(u.userId, body);
     return { ok: true, message: 'Idioma agregado', data: { idioma } };
   }
 
@@ -64,7 +68,7 @@ export class CandidatosController {
   @Roles('candidate')
   @HttpCode(HttpStatus.OK)
   async updateIdioma(@CurrentUser() u: JwtPayload, @Body() body: any) {
-    const idioma = await this.svc.updateIdioma(u.userId, body);
+    const idioma = await this.curriculumSvc.updateIdioma(u.userId, body);
     return { ok: true, message: 'Idioma actualizado', data: { idioma } };
   }
 
@@ -73,7 +77,7 @@ export class CandidatosController {
   @Roles('candidate')
   @HttpCode(HttpStatus.OK)
   async deleteIdioma(@CurrentUser() u: JwtPayload, @Query('id') id: string) {
-    await this.svc.deleteIdioma(u.userId, id);
+    await this.curriculumSvc.deleteIdioma(u.userId, id);
     return { ok: true, message: 'Idioma eliminado' };
   }
 
@@ -82,7 +86,7 @@ export class CandidatosController {
   @Get('experiencia')
   @Roles('candidate')
   async getExperiencia(@CurrentUser() u: JwtPayload) {
-    const experiencia = await this.svc.getExperiencia(u.userId);
+    const experiencia = await this.curriculumSvc.getExperiencia(u.userId);
     return { ok: true, message: 'Experiencia obtenida', data: { experiencia } };
   }
 
@@ -90,7 +94,7 @@ export class CandidatosController {
   @Roles('candidate')
   @HttpCode(HttpStatus.CREATED)
   async addExperiencia(@CurrentUser() u: JwtPayload, @Body() body: any) {
-    const experiencia = await this.svc.addExperiencia(u.userId, body);
+    const experiencia = await this.curriculumSvc.addExperiencia(u.userId, body);
     return { ok: true, message: 'Experiencia agregada', data: { experiencia } };
   }
 
@@ -98,7 +102,7 @@ export class CandidatosController {
   @Roles('candidate')
   @HttpCode(HttpStatus.OK)
   async updateExperiencia(@CurrentUser() u: JwtPayload, @Body() body: any) {
-    const experiencia = await this.svc.updateExperiencia(u.userId, body);
+    const experiencia = await this.curriculumSvc.updateExperiencia(u.userId, body);
     return { ok: true, message: 'Experiencia actualizada', data: { experiencia } };
   }
 
@@ -107,7 +111,7 @@ export class CandidatosController {
   @Roles('candidate')
   @HttpCode(HttpStatus.OK)
   async deleteExperiencia(@CurrentUser() u: JwtPayload, @Query('id') id: string) {
-    await this.svc.deleteExperiencia(u.userId, id);
+    await this.curriculumSvc.deleteExperiencia(u.userId, id);
     return { ok: true, message: 'Experiencia eliminada' };
   }
 
@@ -116,7 +120,7 @@ export class CandidatosController {
   @Get('educacion')
   @Roles('candidate')
   async getEducacion(@CurrentUser() u: JwtPayload) {
-    const educacion = await this.svc.getEducacion(u.userId);
+    const educacion = await this.curriculumSvc.getEducacion(u.userId);
     return { ok: true, message: 'Educación obtenida', data: { educacion } };
   }
 
@@ -124,7 +128,7 @@ export class CandidatosController {
   @Roles('candidate')
   @HttpCode(HttpStatus.CREATED)
   async addEducacion(@CurrentUser() u: JwtPayload, @Body() body: any) {
-    const educacion = await this.svc.addEducacion(u.userId, body);
+    const educacion = await this.curriculumSvc.addEducacion(u.userId, body);
     return { ok: true, message: 'Educación agregada', data: { educacion } };
   }
 
@@ -132,7 +136,7 @@ export class CandidatosController {
   @Roles('candidate')
   @HttpCode(HttpStatus.OK)
   async updateEducacion(@CurrentUser() u: JwtPayload, @Body() body: any) {
-    const educacion = await this.svc.updateEducacion(u.userId, body);
+    const educacion = await this.curriculumSvc.updateEducacion(u.userId, body);
     return { ok: true, message: 'Educación actualizada', data: { educacion } };
   }
 
@@ -141,7 +145,7 @@ export class CandidatosController {
   @Roles('candidate')
   @HttpCode(HttpStatus.OK)
   async deleteEducacion(@CurrentUser() u: JwtPayload, @Query('id') id: string) {
-    await this.svc.deleteEducacion(u.userId, id);
+    await this.curriculumSvc.deleteEducacion(u.userId, id);
     return { ok: true, message: 'Educación eliminada' };
   }
 

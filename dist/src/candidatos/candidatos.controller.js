@@ -10,6 +10,7 @@ Object.defineProperty(exports, "CandidatosController", {
 });
 const _common = require("@nestjs/common");
 const _candidatosservice = require("./candidatos.service");
+const _curriculumservice = require("../curriculum/curriculum.service");
 const _jwtauthguard = require("../common/guards/jwt-auth.guard");
 const _rolesguard = require("../common/guards/roles.guard");
 const _rolesdecorator = require("../common/decorators/roles.decorator");
@@ -54,7 +55,7 @@ let CandidatosController = class CandidatosController {
     }
     // ══════════════════ IDIOMAS ══════════════════════════════════
     async getIdiomas(u) {
-        const idiomas = await this.svc.getIdiomas(u.userId);
+        const idiomas = await this.curriculumSvc.getIdiomas(u.userId);
         return {
             ok: true,
             message: 'Idiomas obtenidos',
@@ -64,7 +65,7 @@ let CandidatosController = class CandidatosController {
         };
     }
     async addIdioma(u, body) {
-        const idioma = await this.svc.addIdioma(u.userId, body);
+        const idioma = await this.curriculumSvc.addIdioma(u.userId, body);
         return {
             ok: true,
             message: 'Idioma agregado',
@@ -74,7 +75,7 @@ let CandidatosController = class CandidatosController {
         };
     }
     async updateIdioma(u, body) {
-        const idioma = await this.svc.updateIdioma(u.userId, body);
+        const idioma = await this.curriculumSvc.updateIdioma(u.userId, body);
         return {
             ok: true,
             message: 'Idioma actualizado',
@@ -85,7 +86,7 @@ let CandidatosController = class CandidatosController {
     }
     // DELETE /api/candidatos/idiomas?id=xxx
     async deleteIdioma(u, id) {
-        await this.svc.deleteIdioma(u.userId, id);
+        await this.curriculumSvc.deleteIdioma(u.userId, id);
         return {
             ok: true,
             message: 'Idioma eliminado'
@@ -93,7 +94,7 @@ let CandidatosController = class CandidatosController {
     }
     // ══════════════════ EXPERIENCIA ══════════════════════════════
     async getExperiencia(u) {
-        const experiencia = await this.svc.getExperiencia(u.userId);
+        const experiencia = await this.curriculumSvc.getExperiencia(u.userId);
         return {
             ok: true,
             message: 'Experiencia obtenida',
@@ -103,7 +104,7 @@ let CandidatosController = class CandidatosController {
         };
     }
     async addExperiencia(u, body) {
-        const experiencia = await this.svc.addExperiencia(u.userId, body);
+        const experiencia = await this.curriculumSvc.addExperiencia(u.userId, body);
         return {
             ok: true,
             message: 'Experiencia agregada',
@@ -113,7 +114,7 @@ let CandidatosController = class CandidatosController {
         };
     }
     async updateExperiencia(u, body) {
-        const experiencia = await this.svc.updateExperiencia(u.userId, body);
+        const experiencia = await this.curriculumSvc.updateExperiencia(u.userId, body);
         return {
             ok: true,
             message: 'Experiencia actualizada',
@@ -124,7 +125,7 @@ let CandidatosController = class CandidatosController {
     }
     // DELETE /api/candidatos/experiencia?id=xxx
     async deleteExperiencia(u, id) {
-        await this.svc.deleteExperiencia(u.userId, id);
+        await this.curriculumSvc.deleteExperiencia(u.userId, id);
         return {
             ok: true,
             message: 'Experiencia eliminada'
@@ -132,7 +133,7 @@ let CandidatosController = class CandidatosController {
     }
     // ══════════════════ EDUCACIÓN ════════════════════════════════
     async getEducacion(u) {
-        const educacion = await this.svc.getEducacion(u.userId);
+        const educacion = await this.curriculumSvc.getEducacion(u.userId);
         return {
             ok: true,
             message: 'Educación obtenida',
@@ -142,7 +143,7 @@ let CandidatosController = class CandidatosController {
         };
     }
     async addEducacion(u, body) {
-        const educacion = await this.svc.addEducacion(u.userId, body);
+        const educacion = await this.curriculumSvc.addEducacion(u.userId, body);
         return {
             ok: true,
             message: 'Educación agregada',
@@ -152,7 +153,7 @@ let CandidatosController = class CandidatosController {
         };
     }
     async updateEducacion(u, body) {
-        const educacion = await this.svc.updateEducacion(u.userId, body);
+        const educacion = await this.curriculumSvc.updateEducacion(u.userId, body);
         return {
             ok: true,
             message: 'Educación actualizada',
@@ -163,7 +164,7 @@ let CandidatosController = class CandidatosController {
     }
     // DELETE /api/candidatos/educacion?id=xxx
     async deleteEducacion(u, id) {
-        await this.svc.deleteEducacion(u.userId, id);
+        await this.curriculumSvc.deleteEducacion(u.userId, id);
         return {
             ok: true,
             message: 'Educación eliminada'
@@ -181,8 +182,9 @@ let CandidatosController = class CandidatosController {
             data
         };
     }
-    constructor(svc){
+    constructor(svc, curriculumSvc){
         this.svc = svc;
+        this.curriculumSvc = curriculumSvc;
     }
 };
 _ts_decorate([
@@ -371,7 +373,8 @@ CandidatosController = _ts_decorate([
     (0, _common.UseGuards)(_jwtauthguard.JwtAuthGuard, _rolesguard.RolesGuard),
     _ts_metadata("design:type", Function),
     _ts_metadata("design:paramtypes", [
-        typeof _candidatosservice.CandidatosService === "undefined" ? Object : _candidatosservice.CandidatosService
+        typeof _candidatosservice.CandidatosService === "undefined" ? Object : _candidatosservice.CandidatosService,
+        typeof _curriculumservice.CurriculumService === "undefined" ? Object : _curriculumservice.CurriculumService
     ])
 ], CandidatosController);
 

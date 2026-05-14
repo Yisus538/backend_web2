@@ -7,23 +7,9 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateVacanteDto } from './dto/create-vacante.dto';
 import { UpdateVacanteDto } from './dto/update-vacante.dto';
+import { calcMatchScore } from '../common/utils/match-score.utils';
 
 const PAGE_LIMIT_MAX = 100;
-
-// Réplica exacta del helper original (también presente en candidatos)
-function calcMatchScore(candidateSkills: string[], requisitos: any): number {
-  const techSkills: string[] = (requisitos?.techSkills ?? [])
-    .filter((s: any) => s.selected)
-    .map((s: any) => s.label.toLowerCase());
-  const softSkills: string[] = (requisitos?.softSkills ?? [])
-    .filter((s: any) => s.selected)
-    .map((s: any) => s.label.toLowerCase());
-  const allRequired = [...techSkills, ...softSkills];
-  if (allRequired.length === 0) return 75;
-  const lower   = candidateSkills.map((s) => s.toLowerCase());
-  const matches = allRequired.filter((r) => lower.includes(r));
-  return Math.round((matches.length / allRequired.length) * 100);
-}
 
 function formatSalary(amount: number | null): string {
   if (!amount) return '';

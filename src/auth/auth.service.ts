@@ -10,7 +10,7 @@ import {
 import * as jwt from 'jsonwebtoken';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
-import { NavService } from './nav.service';
+import { NavService } from '../navigation/nav.service';
 import {
   hashPassword,
   comparePassword,

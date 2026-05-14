@@ -4,6 +4,7 @@ import { ValidationPipe } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
+import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 
 const ALLOWED_ORIGINS = [
   'http://localhost:3000',
@@ -43,6 +44,7 @@ async function bootstrap() {
   );
 
   app.useGlobalFilters(new AllExceptionsFilter());
+  app.useGlobalInterceptors(new ResponseInterceptor());
 
   const port = process.env.PORT || 3000;
   app.enableShutdownHooks();

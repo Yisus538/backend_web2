@@ -7,6 +7,7 @@ const _common = require("@nestjs/common");
 const _cookieparser = /*#__PURE__*/ _interop_require_default(require("cookie-parser"));
 const _appmodule = require("./app.module");
 const _httpexceptionfilter = require("./common/filters/http-exception.filter");
+const _responseinterceptor = require("./common/interceptors/response.interceptor");
 function _interop_require_default(obj) {
     return obj && obj.__esModule ? obj : {
         default: obj
@@ -54,6 +55,7 @@ async function bootstrap() {
         }
     }));
     app.useGlobalFilters(new _httpexceptionfilter.AllExceptionsFilter());
+    app.useGlobalInterceptors(new _responseinterceptor.ResponseInterceptor());
     const port = process.env.PORT || 3000;
     app.enableShutdownHooks();
     await app.listen(port, '0.0.0.0');

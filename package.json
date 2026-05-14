@@ -12,7 +12,9 @@
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "prisma migrate deploy && node dist/src/main",
-    "lint": "eslint \"{src,apps,libs,test}/**/*.ts\""
+    "lint": "eslint \"{src,apps,libs,test}/**/*.ts\"",
+    "test": "jest",
+    "test:cov": "jest --coverage"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.19",
@@ -49,20 +51,35 @@
   "devDependencies": {
     "@nestjs/cli": "^11.0.21",
     "@nestjs/schematics": "^11.1.0",
+    "@nestjs/testing": "^11.1.20",
     "@swc/cli": "^0.8.1",
     "@swc/core": "^1.15.33",
     "@types/bcrypt": "^6.0.0",
+    "@types/jest": "^30.0.0",
     "@types/multer": "^1.4.13",
     "@types/node": "^20.14.9",
     "@types/nodemailer": "^7.0.11",
     "@types/passport-jwt": "^4.0.1",
     "@types/pg": "^8.20.0",
     "@types/sharp": "^0.31.1",
+    "@types/supertest": "^7.2.0",
     "@types/uuid": "^10.0.0",
     "chokidar": "^5.0.0",
+    "jest": "^30.4.2",
     "kill-port": "^2.0.1",
+    "supertest": "^7.2.2",
+    "ts-jest": "^29.4.9",
     "ts-node": "^10.9.2",
     "tsx": "^4.21.0",
     "typescript": "^5.5.3"
+  },
+  "jest": {
+    "moduleFileExtensions": ["js", "json", "ts"],
+    "rootDir": "src",
+    "testRegex": ".*\\.spec\\.ts$",
+    "transform": { "^.+\\.(t|j)s$": "ts-jest" },
+    "collectCoverageFrom": ["**/*.(t|j)s"],
+    "coverageDirectory": "../coverage",
+    "testEnvironment": "node"
   }
 }
