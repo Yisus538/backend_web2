@@ -30,7 +30,14 @@ export class CvAnalisisDto {
   @IsString()
   @IsNotEmpty({ message: 'candidatoId es requerido' })
   candidatoId: string;
+  nombre_completo: string;
+  correo_cv: string;
+  telefono_cv: string;
+  puesto_evaluado: string;
+  motivo_rechazo: string;
+  resumen: string;
   skills_detectadas: SkillDto[];
+  tecnologias_detectadas: string[];
   experiencia_laboral: ExperienciaIaDto[];
   educacion: EducacionIaDto[];
   idiomas: IdiomaIaDto[];

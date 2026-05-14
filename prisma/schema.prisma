@@ -79,6 +79,7 @@ model AnalisisCvDirecto {
   score              Int?
   apto               Boolean?
   motivoRechazo      String?             @map("motivo_rechazo")
+  resumen            String?
   cvCompleto         Json?               @map("cv_completo")
   evaluacionCompleta Json?               @map("evaluacion_completa")
   analizadoEl        DateTime            @default(now()) @map("analizado_el")
@@ -170,6 +171,7 @@ model CandidatoHabilidad {
   aniosExp         Int?      @map("anios_exp")
   verificada       Boolean   @default(false)
   analisisOrigenId String?   @map("analisis_origen_id")
+  tipo             String?
   creadaEl         DateTime  @default(now()) @map("creada_el")
   actualizadoEl    DateTime  @default(now()) @map("actualizado_el")
   candidato        Candidato @relation(fields: [candidatoId], references: [usuarioId], onDelete: Cascade)

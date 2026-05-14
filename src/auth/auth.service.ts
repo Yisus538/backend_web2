@@ -222,11 +222,51 @@ export class AuthService {
         id: true, fullName: true, email: true, role: true,
         avatarUrl: true, telefono: true, ubicacion: true, titulo: true,
         isEmailVerified: true,
+        candidato: {
+          select: {
+            biografia: true,
+            habilidades: {
+              select: {
+                nivel: true, aniosExp: true,
+                habilidad: { select: { id: true, nombre: true } },
+              },
+              orderBy: { aniosExp: 'desc' },
+            },
+            idiomas:    { orderBy: { creadaEl: 'asc' } },
+            experiencia: { orderBy: { fechaInicio: 'desc' } },
+            educacion:   { orderBy: { fechaInicio: 'desc' } },
+            analisisDirectos: {
+              select:  { resumen: true, score: true, analizadoEl: true },
+              orderBy: { analizadoEl: 'desc' },
+              take: 1,
+            },
+          },
+        },
       },
     });
     if (!user) throw new UnauthorizedException('Usuario no encontrado');
+
     const nav = await this.navService.getNavForRole(user.role);
-    return { user, nav };
+
+    const { candidato, ...baseUser } = user as any;
+    const perfil = candidato
+      ? {
+          biografia:   candidato.biografia ?? null,
+          resumen_ia:  candidato.analisisDirectos?.[0]?.resumen ?? null,
+          score_ia:    candidato.analisisDirectos?.[0]?.score   ?? null,
+          habilidades: candidato.habilidades.map((h: any) => ({
+            id:       h.habilidad.id,
+            nombre:   h.habilidad.nombre,
+            nivel:    h.nivel,
+            aniosExp: h.aniosExp,
+          })),
+          idiomas:    candidato.idiomas,
+          experiencia: candidato.experiencia,
+          educacion:   candidato.educacion,
+        }
+      : null;
+
+    return { user: { ...baseUser, perfil }, nav };
   }
 
   // ────────────────────────────────────────────────────────────
