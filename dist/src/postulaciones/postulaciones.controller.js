@@ -14,6 +14,7 @@ const _jwtauthguard = require("../common/guards/jwt-auth.guard");
 const _rolesguard = require("../common/guards/roles.guard");
 const _rolesdecorator = require("../common/decorators/roles.decorator");
 const _currentuserdecorator = require("../common/decorators/current-user.decorator");
+const _postulacioncallbackdto = require("./dto/postulacion-callback.dto");
 function _ts_decorate(decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
@@ -30,6 +31,22 @@ function _ts_param(paramIndex, decorator) {
 }
 let PostulacionesController = class PostulacionesController {
     // ────────────────────────────────────────────────────────────
+    // POST /api/postulaciones/callback  — Make.com llama esto
+    // Sin JWT — protegido con WEBHOOK_SECRET en header
+    // ────────────────────────────────────────────────────────────
+    async callback(dto, secret) {
+        const expected = process.env.WEBHOOK_SECRET;
+        if (!expected || secret !== expected) {
+            throw new _common.UnauthorizedException('Webhook secret inválido');
+        }
+        const result = await this.svc.procesarCallback(dto);
+        return {
+            ok: true,
+            message: 'Callback procesado',
+            data: result
+        };
+    }
+    // ────────────────────────────────────────────────────────────
     // GET /api/postulaciones/vacante/:vacanteId  — empresa: postulantes de una vacante
     // IMPORTANTE: ruta estática antes del dinámico GET()
     // ────────────────────────────────────────────────────────────
@@ -42,10 +59,10 @@ let PostulacionesController = class PostulacionesController {
         };
     }
     // ────────────────────────────────────────────────────────────
-    // PATCH /api/postulaciones/:id/estado  — empresa: actualiza estado
+    // PATCH /api/postulaciones/:id/estado  — empresa: cambia estado con email
     // ────────────────────────────────────────────────────────────
-    async actualizarEstado(u, id, estado) {
-        const data = await this.svc.actualizarEstado(u.userId, id, estado);
+    async cambiarEstado(u, id, estado) {
+        const data = await this.svc.cambiarEstadoEmpresa(u.userId, id, estado);
         return {
             ok: true,
             message: 'Estado actualizado',
@@ -91,7 +108,20 @@ let PostulacionesController = class PostulacionesController {
     }
 };
 _ts_decorate([
+    (0, _common.Post)('callback'),
+    (0, _common.HttpCode)(_common.HttpStatus.OK),
+    _ts_param(0, (0, _common.Body)()),
+    _ts_param(1, (0, _common.Headers)('x-webhook-secret')),
+    _ts_metadata("design:type", Function),
+    _ts_metadata("design:paramtypes", [
+        typeof _postulacioncallbackdto.PostulacionCallbackDto === "undefined" ? Object : _postulacioncallbackdto.PostulacionCallbackDto,
+        String
+    ]),
+    _ts_metadata("design:returntype", Promise)
+], PostulacionesController.prototype, "callback", null);
+_ts_decorate([
     (0, _common.Get)('vacante/:vacanteId'),
+    (0, _common.UseGuards)(_jwtauthguard.JwtAuthGuard, _rolesguard.RolesGuard),
     (0, _rolesdecorator.Roles)('company'),
     _ts_param(0, (0, _currentuserdecorator.CurrentUser)()),
     _ts_param(1, (0, _common.Param)('vacanteId')),
@@ -104,7 +134,9 @@ _ts_decorate([
 ], PostulacionesController.prototype, "listarPorVacante", null);
 _ts_decorate([
     (0, _common.Patch)(':id/estado'),
+    (0, _common.UseGuards)(_jwtauthguard.JwtAuthGuard, _rolesguard.RolesGuard),
     (0, _rolesdecorator.Roles)('company'),
+    (0, _common.HttpCode)(_common.HttpStatus.OK),
     _ts_param(0, (0, _currentuserdecorator.CurrentUser)()),
     _ts_param(1, (0, _common.Param)('id')),
     _ts_param(2, (0, _common.Body)('estado')),
@@ -115,9 +147,10 @@ _ts_decorate([
         String
     ]),
     _ts_metadata("design:returntype", Promise)
-], PostulacionesController.prototype, "actualizarEstado", null);
+], PostulacionesController.prototype, "cambiarEstado", null);
 _ts_decorate([
     (0, _common.Get)(),
+    (0, _common.UseGuards)(_jwtauthguard.JwtAuthGuard, _rolesguard.RolesGuard),
     (0, _rolesdecorator.Roles)('candidate'),
     _ts_param(0, (0, _currentuserdecorator.CurrentUser)()),
     _ts_param(1, (0, _common.Query)('estado')),
@@ -130,6 +163,7 @@ _ts_decorate([
 ], PostulacionesController.prototype, "listar", null);
 _ts_decorate([
     (0, _common.Post)(),
+    (0, _common.UseGuards)(_jwtauthguard.JwtAuthGuard, _rolesguard.RolesGuard),
     (0, _rolesdecorator.Roles)('candidate'),
     (0, _common.HttpCode)(_common.HttpStatus.CREATED),
     _ts_param(0, (0, _currentuserdecorator.CurrentUser)()),
@@ -143,6 +177,7 @@ _ts_decorate([
 ], PostulacionesController.prototype, "crear", null);
 _ts_decorate([
     (0, _common.Delete)(),
+    (0, _common.UseGuards)(_jwtauthguard.JwtAuthGuard, _rolesguard.RolesGuard),
     (0, _rolesdecorator.Roles)('candidate'),
     (0, _common.HttpCode)(_common.HttpStatus.OK),
     _ts_param(0, (0, _currentuserdecorator.CurrentUser)()),
@@ -156,7 +191,6 @@ _ts_decorate([
 ], PostulacionesController.prototype, "retirar", null);
 PostulacionesController = _ts_decorate([
     (0, _common.Controller)('postulaciones'),
-    (0, _common.UseGuards)(_jwtauthguard.JwtAuthGuard, _rolesguard.RolesGuard),
     _ts_metadata("design:type", Function),
     _ts_metadata("design:paramtypes", [
         typeof _postulacionesservice.PostulacionesService === "undefined" ? Object : _postulacionesservice.PostulacionesService

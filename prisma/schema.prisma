@@ -140,12 +140,31 @@ model Postulacion {
   estado            String                 @default("pendiente")
   creadaEl          DateTime               @default(now()) @map("creada_el")
   analisis          AnalisisCvPostulacion?
+  entrevista        Entrevista?
   historialAnalisis HistorialAnalisis[]
   candidato         Candidato              @relation(fields: [candidatoId], references: [usuarioId], onDelete: Cascade)
   oferta            OfertaLaboral          @relation(fields: [ofertaId], references: [id], onDelete: Cascade)
 
   @@unique([ofertaId, candidatoId])
   @@map("postulaciones")
+}
+
+model Entrevista {
+  id            String    @id @default(uuid())
+  postulacionId String    @unique @map("postulacion_id")
+  fecha         DateTime?
+  duracionMin   Int?      @default(60) @map("duracion_min")
+  tipo          String    @default("pendiente")
+  linkMeet      String?   @map("link_meet")
+  ubicacion     String?
+  notas         String?
+  estado        String    @default("pendiente")
+  creadaEl      DateTime  @default(now()) @map("creada_el")
+  actualizadoEl DateTime  @default(now()) @updatedAt @map("actualizado_el")
+
+  postulacion Postulacion @relation(fields: [postulacionId], references: [id], onDelete: Cascade)
+
+  @@map("entrevistas")
 }
 
 model Habilidad {

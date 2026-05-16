@@ -24,6 +24,7 @@ const _adminmodule = require("./admin/admin.module");
 const _cloudinarymodule = require("./cloudinary/cloudinary.module");
 const _navigationmodule = require("./navigation/navigation.module");
 const _curriculummodule = require("./curriculum/curriculum.module");
+const _entrevistasmodule = require("./entrevistas/entrevistas.module");
 function _ts_decorate(decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
@@ -59,7 +60,8 @@ AppModule = _ts_decorate([
             _cvmodule.CvModule,
             _uploadmodule.UploadModule,
             _healthmodule.HealthModule,
-            _adminmodule.AdminModule
+            _adminmodule.AdminModule,
+            _entrevistasmodule.EntrevistasModule
         ]
     })
 ], AppModule);

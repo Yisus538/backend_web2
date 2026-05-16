@@ -85,6 +85,116 @@ let EmailService = class EmailService {
         </p>
       </div>`);
     }
+    // ─── Postulación recibida → candidato ───────────────────────
+    async sendPostulacionRecibida(email, nombre, vacante, empresa) {
+        await this.send(email, `Recibimos tu postulación — ${vacante}`, `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:32px;">
+        <h2 style="color:#1a405b;">Hola, ${nombre}!</h2>
+        <p>Tu postulación a <strong>${vacante}</strong> en <strong>${empresa}</strong> fue recibida correctamente.</p>
+        <p>Nuestra IA está evaluando tu perfil para esta posición. Te notificaremos el resultado en los próximos minutos.</p>
+        <p style="color:#888;font-size:13px;">Si no te postulaste, ignorá este mensaje.</p>
+      </div>`);
+    }
+    // ─── IA aceptó → candidato ───────────────────────────────────
+    async sendEntrevistaAgendada(email, nombre, vacante, empresa, matchScore, fecha) {
+        const scoreStr = matchScore ? `Score de compatibilidad: <strong>${matchScore}%</strong><br>` : '';
+        const fechaStr = fecha ? `Fecha tentativa: <strong>${fecha.toLocaleDateString('es-AR', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        })}</strong>` : 'La empresa te confirmará la fecha y hora en breve.';
+        await this.send(email, `¡Tu postulación avanzó! — ${vacante}`, `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:32px;">
+        <h2 style="color:#1a405b;">¡Felicitaciones, ${nombre}!</h2>
+        <p>Tu postulación a <strong>${vacante}</strong>${empresa ? ` en <strong>${empresa}</strong>` : ''} fue <strong style="color:#16a34a;">aceptada</strong> por nuestra IA.</p>
+        <div style="background:#f0fdf4;border-left:4px solid #16a34a;padding:16px;border-radius:4px;margin:20px 0;">
+          ${scoreStr}
+          ${fechaStr}
+        </div>
+        <p>Próximos pasos: la empresa confirmará la fecha, hora y link de la entrevista.</p>
+        <p style="color:#888;font-size:13px;">Podés ver el estado en tu portal de candidato.</p>
+      </div>`);
+    }
+    // ─── Candidato aceptado automáticamente → empresa ────────────
+    async sendCandidatoAceptadoEmpresa(email, nombreEmpresa, candidato, vacante, matchScore, fortalezas) {
+        const fortList = fortalezas.slice(0, 3).map((f)=>`<li>${f}</li>`).join('');
+        await this.send(email, `Candidato aceptado automáticamente — ${vacante}`, `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:32px;">
+        <h2 style="color:#1a405b;">Nuevo candidato aceptado</h2>
+        <p>Hola${nombreEmpresa ? ` ${nombreEmpresa}` : ''}. La IA evaluó a <strong>${candidato}</strong> para <strong>${vacante}</strong> y obtuvo un score de <strong>${matchScore}%</strong>.</p>
+        ${fortList ? `<p>Principales fortalezas detectadas:</p><ul>${fortList}</ul>` : ''}
+        <p>Ingresá a ReclutaIA para confirmar la fecha y hora de la entrevista.</p>
+      </div>`);
+    }
+    // ─── Score < umbral → empresa (revisión manual) ──────────────
+    async sendPostulantePendiente(email, vacante, candidato) {
+        await this.send(email, `Nuevo postulante para revisar — ${vacante}`, `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:32px;">
+        <h2 style="color:#1a405b;">Revisión manual requerida</h2>
+        <p><strong>${candidato}</strong> se postuló a <strong>${vacante}</strong>. El score de compatibilidad no alcanzó el umbral automático.</p>
+        <p>Revisá su perfil en ReclutaIA para decidir si avanza al proceso.</p>
+      </div>`);
+    }
+    // ─── Entrevista confirmada con fecha → candidato ─────────────
+    async sendConfirmacionEntrevista(email, nombre, vacante, fecha, linkMeet, ubicacion, tipo) {
+        const fechaStr = fecha ? fecha.toLocaleString('es-AR', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        }) : 'A confirmar';
+        const lugarStr = tipo === 'remota' && linkMeet ? `<p>Link de videollamada: <a href="${linkMeet}">${linkMeet}</a></p>` : ubicacion ? `<p>Lugar: ${ubicacion}</p>` : '';
+        await this.send(email, `Entrevista confirmada — ${vacante}`, `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:32px;">
+        <h2 style="color:#1a405b;">Tu entrevista está confirmada</h2>
+        <p>Hola ${nombre}. Tu entrevista para <strong>${vacante}</strong> fue confirmada.</p>
+        <div style="background:#eff6ff;border-left:4px solid #2563eb;padding:16px;border-radius:4px;margin:20px 0;">
+          <p style="margin:0;"><strong>📅 Fecha:</strong> ${fechaStr}</p>
+          <p style="margin:8px 0 0;"><strong>📍 Modalidad:</strong> ${tipo === 'remota' ? 'Remota' : tipo === 'presencial' ? 'Presencial' : 'A confirmar'}</p>
+        </div>
+        ${lugarStr}
+        <p style="color:#888;font-size:13px;">Ante cualquier inconveniente, contactá directamente a la empresa.</p>
+      </div>`);
+    }
+    // ─── Recordatorio 24hs → candidato y empresa ─────────────────
+    async sendRecordatorioEntrevista(email, nombre, vacante, fecha, linkMeet) {
+        const fechaStr = fecha.toLocaleString('es-AR', {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        const linkStr = linkMeet ? `<p>Link: <a href="${linkMeet}">${linkMeet}</a></p>` : '';
+        await this.send(email, `Recordatorio: entrevista mañana — ${vacante}`, `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:32px;">
+        <h2 style="color:#1a405b;">Tu entrevista es mañana</h2>
+        <p>Hola ${nombre}. Te recordamos que mañana a las <strong>${fechaStr}</strong> tenés tu entrevista para <strong>${vacante}</strong>.</p>
+        ${linkStr}
+      </div>`);
+    }
+    // ─── Candidato es finalista → candidato ──────────────────────
+    async sendFinalistaNotification(email, nombre, vacante) {
+        await this.send(email, `¡Sos finalista en ${vacante}!`, `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:32px;">
+        <h2 style="color:#1a405b;">¡Llegaste a la etapa final!</h2>
+        <p>Hola ${nombre}. Nos complace informarte que avanzaste a la etapa de <strong>finalistas</strong> para <strong>${vacante}</strong>.</p>
+        <p>La empresa se pondrá en contacto contigo a la brevedad para los próximos pasos.</p>
+      </div>`);
+    }
+    // ─── Candidato rechazado → candidato (con feedback IA) ───────
+    async sendRechazoPostulacion(email, nombre, vacante, fortalezas, debilidades) {
+        const fortHtml = fortalezas.length ? `<p><strong>Tus puntos fuertes detectados:</strong></p><ul>${fortalezas.map((f)=>`<li>${f}</li>`).join('')}</ul>` : '';
+        const debHtml = debilidades.length ? `<p><strong>Áreas de mejora:</strong></p><ul>${debilidades.map((d)=>`<li>${d}</li>`).join('')}</ul>` : '';
+        await this.send(email, `Actualización sobre tu postulación — ${vacante}`, `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:32px;">
+        <h2 style="color:#1a405b;">Gracias por participar</h2>
+        <p>Hola ${nombre}. Lamentablemente en esta oportunidad tu perfil no fue seleccionado para <strong>${vacante}</strong>.</p>
+        ${fortHtml}${debHtml}
+        <p>Te animamos a seguir aplicando. ¡Mucho éxito!</p>
+        <p style="color:#888;font-size:13px;">Este análisis fue generado automáticamente por nuestra IA.</p>
+      </div>`);
+    }
+    // ─── Candidato contratado → candidato ────────────────────────
+    async sendContratadoNotification(email, nombre, vacante) {
+        await this.send(email, `¡Felicitaciones, fuiste seleccionado! — ${vacante}`, `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:32px;">
+        <h2 style="color:#1a405b;">¡Felicitaciones, ${nombre}!</h2>
+        <p>Nos complace informarte que fuiste seleccionado/a para <strong>${vacante}</strong>.</p>
+        <p>La empresa se comunicará contigo para coordinar tu incorporación. ¡Mucho éxito en esta nueva etapa!</p>
+      </div>`);
+    }
     constructor(){
         this.logger = new _common.Logger(EmailService.name);
     }

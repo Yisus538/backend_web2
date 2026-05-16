@@ -7,32 +7,48 @@ import {
   Body,
   Param,
   Query,
+  Headers,
   UseGuards,
   HttpCode,
   HttpStatus,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { PostulacionesService } from './postulaciones.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser, JwtPayload } from '../common/decorators/current-user.decorator';
+import { PostulacionCallbackDto } from './dto/postulacion-callback.dto';
 
 @Controller('postulaciones')
-@UseGuards(JwtAuthGuard, RolesGuard)
-// ✅ FIX: @Roles removido del nivel de clase.
-// Tenerlo aquí como 'candidate' hacía que el RolesGuard pudiera combinar
-// ambos roles (clase + método) en vez de que el método sobrescriba la clase,
-// bloqueando a usuarios 'company' en las rutas que los necesitan.
-// Cada método declara su propio @Roles explícitamente.
 export class PostulacionesController {
   constructor(private svc: PostulacionesService) {}
+
+  // ────────────────────────────────────────────────────────────
+  // POST /api/postulaciones/callback  — Make.com llama esto
+  // Sin JWT — protegido con WEBHOOK_SECRET en header
+  // ────────────────────────────────────────────────────────────
+  @Post('callback')
+  @HttpCode(HttpStatus.OK)
+  async callback(
+    @Body() dto: PostulacionCallbackDto,
+    @Headers('x-webhook-secret') secret: string,
+  ) {
+    const expected = process.env.WEBHOOK_SECRET;
+    if (!expected || secret !== expected) {
+      throw new UnauthorizedException('Webhook secret inválido');
+    }
+    const result = await this.svc.procesarCallback(dto);
+    return { ok: true, message: 'Callback procesado', data: result };
+  }
 
   // ────────────────────────────────────────────────────────────
   // GET /api/postulaciones/vacante/:vacanteId  — empresa: postulantes de una vacante
   // IMPORTANTE: ruta estática antes del dinámico GET()
   // ────────────────────────────────────────────────────────────
   @Get('vacante/:vacanteId')
-  @Roles('company')                        // ✅ solo empresa puede ver sus postulantes
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('company')
   async listarPorVacante(
     @CurrentUser() u: JwtPayload,
     @Param('vacanteId') vacanteId: string,
@@ -42,16 +58,18 @@ export class PostulacionesController {
   }
 
   // ────────────────────────────────────────────────────────────
-  // PATCH /api/postulaciones/:id/estado  — empresa: actualiza estado
+  // PATCH /api/postulaciones/:id/estado  — empresa: cambia estado con email
   // ────────────────────────────────────────────────────────────
   @Patch(':id/estado')
-  @Roles('company')                        // ✅ solo empresa puede cambiar estado
-  async actualizarEstado(
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('company')
+  @HttpCode(HttpStatus.OK)
+  async cambiarEstado(
     @CurrentUser() u: JwtPayload,
-    @Param('id') id: string,
+    @Param('id')   id: string,
     @Body('estado') estado: string,
   ) {
-    const data = await this.svc.actualizarEstado(u.userId, id, estado);
+    const data = await this.svc.cambiarEstadoEmpresa(u.userId, id, estado);
     return { ok: true, message: 'Estado actualizado', data };
   }
 
@@ -59,7 +77,8 @@ export class PostulacionesController {
   // GET /api/postulaciones?estado=en-curso
   // ────────────────────────────────────────────────────────────
   @Get()
-  @Roles('candidate')                      // ✅ solo candidato ve sus candidaturas
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('candidate')
   async listar(
     @CurrentUser() u: JwtPayload,
     @Query('estado') estado?: string,
@@ -72,7 +91,8 @@ export class PostulacionesController {
   // POST /api/postulaciones
   // ────────────────────────────────────────────────────────────
   @Post()
-  @Roles('candidate')                      // ✅ solo candidato puede postularse
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('candidate')
   @HttpCode(HttpStatus.CREATED)
   async crear(
     @CurrentUser() u: JwtPayload,
@@ -90,7 +110,8 @@ export class PostulacionesController {
   // DELETE /api/postulaciones?id=xxx
   // ────────────────────────────────────────────────────────────
   @Delete()
-  @Roles('candidate')                      // ✅ solo candidato puede retirar su postulación
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('candidate')
   @HttpCode(HttpStatus.OK)
   async retirar(
     @CurrentUser() u: JwtPayload,

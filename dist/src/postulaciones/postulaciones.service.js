@@ -10,6 +10,7 @@ Object.defineProperty(exports, "PostulacionesService", {
 });
 const _common = require("@nestjs/common");
 const _prismaservice = require("../prisma/prisma.service");
+const _emailservice = require("../email/email.service");
 function _ts_decorate(decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
@@ -20,6 +21,12 @@ function _ts_metadata(k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 }
 const STATUS_META = {
+    analizando: {
+        label: 'Analizando',
+        class: 'blue',
+        nextStep: 'IA evaluando candidatura',
+        nextStepType: 'pending'
+    },
     pendiente: {
         label: 'Pendiente',
         class: 'blue',
@@ -70,7 +77,8 @@ let PostulacionesService = class PostulacionesService {
                 'en-curso': [
                     'pendiente',
                     'revision',
-                    'entrevista'
+                    'entrevista',
+                    'analizando'
                 ],
                 'entrevista': [
                     'entrevista'
@@ -147,19 +155,52 @@ let PostulacionesService = class PostulacionesService {
             where: {
                 id: ofertaId,
                 estado: 'abierta'
+            },
+            include: {
+                empresa: {
+                    include: {
+                        usuario: {
+                            select: {
+                                fullName: true,
+                                email: true
+                            }
+                        }
+                    }
+                }
             }
         });
         if (!oferta) throw new _common.NotFoundException('La vacante no existe o no está disponible');
         // Auto-crear perfil candidato si no existe
-        const candidato = await this.prisma.candidato.findUnique({
+        let candidato = await this.prisma.candidato.findUnique({
             where: {
                 usuarioId: userId
+            },
+            include: {
+                usuario: {
+                    select: {
+                        email: true,
+                        fullName: true
+                    }
+                }
             }
         });
         if (!candidato) {
             await this.prisma.candidato.create({
                 data: {
                     usuarioId: userId
+                }
+            });
+            candidato = await this.prisma.candidato.findUnique({
+                where: {
+                    usuarioId: userId
+                },
+                include: {
+                    usuario: {
+                        select: {
+                            email: true,
+                            fullName: true
+                        }
+                    }
                 }
             });
         }
@@ -173,12 +214,25 @@ let PostulacionesService = class PostulacionesService {
             }
         });
         if (existente) throw new _common.ConflictException('Ya te postulaste a esta vacante');
-        return this.prisma.postulacion.create({
+        // Obtener CV URL del último análisis del candidato
+        const ultimoAnalisis = await this.prisma.analisisCvDirecto.findFirst({
+            where: {
+                candidatoId: userId
+            },
+            orderBy: {
+                analizadoEl: 'desc'
+            },
+            select: {
+                cvCompleto: true
+            }
+        });
+        const cvUrl = ultimoAnalisis?.cvCompleto?.cvUrl ?? null;
+        const postulacion = await this.prisma.postulacion.create({
             data: {
                 ofertaId,
                 candidatoId: userId,
-                urlCv: '',
-                estado: 'pendiente'
+                urlCv: cvUrl ?? '',
+                estado: 'analizando'
             },
             select: {
                 id: true,
@@ -191,6 +245,240 @@ let PostulacionesService = class PostulacionesService {
                 }
             }
         });
+        // Email inmediato al candidato: confirmación de recepción
+        this.email.sendPostulacionRecibida(candidato.usuario.email, candidato.usuario.fullName, oferta.titulo, oferta.empresa.nombreEmpresa ?? oferta.empresa.usuario.fullName).catch((err)=>console.error('[postulacion/crear] email error:', err));
+        if (cvUrl) {
+            // Fire-and-forget → Make.com
+            this.enviarAMake(postulacion.id, cvUrl, oferta).catch((err)=>console.error('[postulacion/crear] make error:', err));
+        } else {
+            // Sin CV: pasar a pendiente directamente
+            await this.prisma.postulacion.update({
+                where: {
+                    id: postulacion.id
+                },
+                data: {
+                    estado: 'pendiente'
+                }
+            });
+            const empresaEmail = oferta.empresa.usuario.email;
+            if (empresaEmail) {
+                this.email.sendPostulantePendiente(empresaEmail, oferta.titulo, candidato.usuario.fullName).catch((err)=>console.error('[postulacion/crear] email empresa error:', err));
+            }
+        }
+        return postulacion;
+    }
+    // ────────────────────────────────────────────────────────────
+    // POST /api/postulaciones/callback  — procesado Make.com
+    // ────────────────────────────────────────────────────────────
+    async procesarCallback(dto) {
+        const { postulacionId, matchScore, apto, resumen, fortalezas, debilidades, motivoRechazo, recomendacion, datosCrudos } = dto;
+        const postulacion = await this.prisma.postulacion.findUnique({
+            where: {
+                id: postulacionId
+            },
+            include: {
+                candidato: {
+                    include: {
+                        usuario: {
+                            select: {
+                                email: true,
+                                fullName: true
+                            }
+                        }
+                    }
+                },
+                oferta: {
+                    include: {
+                        empresa: {
+                            include: {
+                                usuario: {
+                                    select: {
+                                        email: true,
+                                        fullName: true
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        if (!postulacion) throw new _common.NotFoundException('Postulación no encontrada');
+        await this.prisma.analisisCvPostulacion.upsert({
+            where: {
+                postulacionId
+            },
+            create: {
+                postulacionId,
+                puntuacion: matchScore,
+                resumen,
+                datosCrudos: datosCrudos ?? {},
+                apto,
+                motivo: motivoRechazo ?? null,
+                fortalezas: fortalezas ?? [],
+                debilidades: debilidades ?? [],
+                riesgos: []
+            },
+            update: {
+                puntuacion: matchScore,
+                resumen,
+                datosCrudos: datosCrudos ?? {},
+                apto,
+                motivo: motivoRechazo ?? null,
+                fortalezas: fortalezas ?? [],
+                debilidades: debilidades ?? []
+            }
+        });
+        const candidatoEmail = postulacion.candidato.usuario.email;
+        const candidatoNombre = postulacion.candidato.usuario.fullName;
+        const vacanteNombre = postulacion.oferta.titulo;
+        const empresaNombre = postulacion.oferta.empresa.nombreEmpresa ?? postulacion.oferta.empresa.usuario.fullName;
+        const empresaEmail = postulacion.oferta.empresa.usuario.email;
+        const UMBRAL = Number(process.env.MATCH_SCORE_UMBRAL ?? 70);
+        if (matchScore >= UMBRAL) {
+            await this.prisma.postulacion.update({
+                where: {
+                    id: postulacionId
+                },
+                data: {
+                    estado: 'entrevista'
+                }
+            });
+            const fechaTentativa = this.sumarDiasHabiles(new Date(), 3);
+            await this.prisma.entrevista.create({
+                data: {
+                    postulacionId,
+                    fecha: fechaTentativa,
+                    estado: 'pendiente',
+                    tipo: 'pendiente',
+                    notas: `Auto-agendada por análisis IA. Score: ${matchScore}%. ${recomendacion ?? ''}`
+                }
+            });
+            this.email.sendEntrevistaAgendada(candidatoEmail, candidatoNombre, vacanteNombre, empresaNombre, matchScore, fechaTentativa).catch((err)=>console.error('[callback] email candidato:', err));
+            if (empresaEmail) {
+                this.email.sendCandidatoAceptadoEmpresa(empresaEmail, postulacion.oferta.empresa.usuario.fullName, candidatoNombre, vacanteNombre, matchScore, fortalezas ?? []).catch((err)=>console.error('[callback] email empresa:', err));
+            }
+        } else {
+            await this.prisma.postulacion.update({
+                where: {
+                    id: postulacionId
+                },
+                data: {
+                    estado: 'pendiente'
+                }
+            });
+            if (empresaEmail) {
+                this.email.sendPostulantePendiente(empresaEmail, vacanteNombre, candidatoNombre).catch((err)=>console.error('[callback] email empresa pending:', err));
+            }
+        }
+        return {
+            ok: true
+        };
+    }
+    // ────────────────────────────────────────────────────────────
+    // PATCH /api/postulaciones/:id/estado  — empresa cambia estado
+    // ────────────────────────────────────────────────────────────
+    async cambiarEstadoEmpresa(empresaUserId, postulacionId, nuevoEstado) {
+        const ESTADOS_VALIDOS = [
+            'revision',
+            'entrevista',
+            'aceptado',
+            'finalista',
+            'contratado',
+            'rechazado',
+            'pendiente'
+        ];
+        if (!ESTADOS_VALIDOS.includes(nuevoEstado)) {
+            throw new _common.BadRequestException(`Estado inválido. Opciones: ${ESTADOS_VALIDOS.join(', ')}`);
+        }
+        // "aceptado" es un alias de "entrevista" — compatibilidad con el frontend
+        const estadoReal = nuevoEstado === 'aceptado' ? 'entrevista' : nuevoEstado;
+        const empresa = await this.prisma.empresa.findUnique({
+            where: {
+                usuarioId: empresaUserId
+            }
+        });
+        if (!empresa) throw new _common.NotFoundException('Empresa no encontrada');
+        const postulacion = await this.prisma.postulacion.findFirst({
+            where: {
+                id: postulacionId,
+                oferta: {
+                    empresaId: empresa.usuarioId
+                }
+            },
+            include: {
+                candidato: {
+                    include: {
+                        usuario: {
+                            select: {
+                                email: true,
+                                fullName: true
+                            }
+                        }
+                    }
+                },
+                oferta: {
+                    select: {
+                        titulo: true
+                    }
+                }
+            }
+        });
+        if (!postulacion) throw new _common.NotFoundException('Postulación no encontrada');
+        await this.prisma.postulacion.update({
+            where: {
+                id: postulacionId
+            },
+            data: {
+                estado: estadoReal
+            }
+        });
+        if (estadoReal === 'entrevista') {
+            const existeEntrevista = await this.prisma.entrevista.findUnique({
+                where: {
+                    postulacionId
+                }
+            });
+            if (!existeEntrevista) {
+                const fechaTentativa = this.sumarDiasHabiles(new Date(), 3);
+                await this.prisma.entrevista.create({
+                    data: {
+                        postulacionId,
+                        fecha: fechaTentativa,
+                        estado: 'pendiente',
+                        tipo: 'pendiente'
+                    }
+                });
+            }
+        }
+        const candidatoEmail = postulacion.candidato.usuario.email;
+        const candidatoNombre = postulacion.candidato.usuario.fullName;
+        const vacanteNombre = postulacion.oferta.titulo;
+        switch(estadoReal){
+            case 'entrevista':
+                this.email.sendEntrevistaAgendada(candidatoEmail, candidatoNombre, vacanteNombre, '', null, null).catch(()=>{});
+                break;
+            case 'finalista':
+                this.email.sendFinalistaNotification(candidatoEmail, candidatoNombre, vacanteNombre).catch(()=>{});
+                break;
+            case 'contratado':
+                this.email.sendContratadoNotification(candidatoEmail, candidatoNombre, vacanteNombre).catch(()=>{});
+                break;
+            case 'rechazado':
+                {
+                    const analisis = await this.prisma.analisisCvPostulacion.findUnique({
+                        where: {
+                            postulacionId
+                        }
+                    });
+                    this.email.sendRechazoPostulacion(candidatoEmail, candidatoNombre, vacanteNombre, analisis?.fortalezas ?? [], analisis?.debilidades ?? []).catch(()=>{});
+                    break;
+                }
+        }
+        return {
+            postulacionId,
+            nuevoEstado: estadoReal
+        };
     }
     // ────────────────────────────────────────────────────────────
     // GET /api/postulaciones/vacante/:vacanteId  (empresa)
@@ -239,44 +527,6 @@ let PostulacionesService = class PostulacionesService {
             }));
     }
     // ────────────────────────────────────────────────────────────
-    // PATCH /api/postulaciones/:id/estado  (empresa)
-    // ────────────────────────────────────────────────────────────
-    async actualizarEstado(empresaUserId, postulacionId, estado) {
-        const ESTADOS_VALIDOS = [
-            'pendiente',
-            'revision',
-            'entrevista',
-            'finalista',
-            'contratado',
-            'rechazado',
-            'aceptado'
-        ];
-        if (!ESTADOS_VALIDOS.includes(estado)) {
-            throw new _common.BadRequestException('Estado inválido');
-        }
-        const postulacion = await this.prisma.postulacion.findFirst({
-            where: {
-                id: postulacionId,
-                oferta: {
-                    empresaId: empresaUserId
-                }
-            }
-        });
-        if (!postulacion) throw new _common.NotFoundException('Postulación no encontrada');
-        return this.prisma.postulacion.update({
-            where: {
-                id: postulacionId
-            },
-            data: {
-                estado
-            },
-            select: {
-                id: true,
-                estado: true
-            }
-        });
-    }
-    // ────────────────────────────────────────────────────────────
     // DELETE /api/postulaciones?id=xxx
     // ────────────────────────────────────────────────────────────
     async retirar(userId, id) {
@@ -294,15 +544,61 @@ let PostulacionesService = class PostulacionesService {
             }
         });
     }
-    constructor(prisma){
+    // ────────────────────────────────────────────────────────────
+    // Privados
+    // ────────────────────────────────────────────────────────────
+    async enviarAMake(postulacionId, cvUrl, oferta) {
+        const webhookUrl = process.env.MAKE_POSTULACION_WEBHOOK_URL;
+        if (!webhookUrl) {
+            console.warn('[make] MAKE_POSTULACION_WEBHOOK_URL no configurada — saltando análisis IA');
+            return;
+        }
+        const payload = {
+            postulacionId,
+            cvUrl,
+            vacante: {
+                titulo: oferta.titulo,
+                descripcion: oferta.descripcion,
+                requisitos: oferta.requisitos,
+                matchingWeights: oferta.matchingWeights,
+                experienciaMinima: oferta.experienciaMinima,
+                categoria: oferta.categoria,
+                modalidad: oferta.modalidad
+            },
+            callbackUrl: `${process.env.API_BASE_URL}/api/postulaciones/callback`,
+            webhookSecret: process.env.WEBHOOK_SECRET
+        };
+        await fetch(webhookUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
+    }
+    sumarDiasHabiles(fecha, dias) {
+        const resultado = new Date(fecha);
+        let agregados = 0;
+        while(agregados < dias){
+            resultado.setDate(resultado.getDate() + 1);
+            const diaSemana = resultado.getDay();
+            if (diaSemana !== 0 && diaSemana !== 6) {
+                agregados++;
+            }
+        }
+        return resultado;
+    }
+    constructor(prisma, email){
         this.prisma = prisma;
+        this.email = email;
     }
 };
 PostulacionesService = _ts_decorate([
     (0, _common.Injectable)(),
     _ts_metadata("design:type", Function),
     _ts_metadata("design:paramtypes", [
-        typeof _prismaservice.PrismaService === "undefined" ? Object : _prismaservice.PrismaService
+        typeof _prismaservice.PrismaService === "undefined" ? Object : _prismaservice.PrismaService,
+        typeof _emailservice.EmailService === "undefined" ? Object : _emailservice.EmailService
     ])
 ], PostulacionesService);
 

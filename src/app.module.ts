@@ -14,6 +14,7 @@ import { AdminModule } from './admin/admin.module';
 import { CloudinaryModule } from './cloudinary/cloudinary.module';
 import { NavigationModule } from './navigation/navigation.module';
 import { CurriculumModule } from './curriculum/curriculum.module';
+import { EntrevistasModule } from './entrevistas/entrevistas.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { CurriculumModule } from './curriculum/curriculum.module';
     UploadModule,
     HealthModule,
     AdminModule,
+    EntrevistasModule,
   ],
 })
 export class AppModule {}
