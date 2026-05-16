@@ -88,16 +88,17 @@ export class EntrevistasService {
     });
 
     return entrevistas.map(e => ({
-      id:          e.id,
-      fecha:       e.fecha,
-      duracionMin: e.duracionMin,
-      tipo:        e.tipo,
-      linkMeet:    e.linkMeet,
-      ubicacion:   e.ubicacion,
-      estado:      e.estado,
-      vacante:     e.postulacion.oferta.titulo,
-      empresa:     e.postulacion.oferta.empresa.nombreEmpresa
-                     ?? e.postulacion.oferta.empresa.usuario.fullName,
+      id:            e.id,
+      postulacionId: e.postulacionId,
+      fecha:         e.fecha,
+      duracionMin:   e.duracionMin,
+      tipo:          e.tipo,
+      linkMeet:      e.linkMeet,
+      ubicacion:     e.ubicacion,
+      estado:        e.estado,
+      vacante:       e.postulacion.oferta.titulo,
+      empresa:       e.postulacion.oferta.empresa.nombreEmpresa
+                       ?? e.postulacion.oferta.empresa.usuario.fullName,
     }));
   }
 

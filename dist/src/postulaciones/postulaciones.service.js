@@ -502,6 +502,7 @@ let PostulacionesService = class PostulacionesService {
                 id: true,
                 estado: true,
                 creadaEl: true,
+                urlCv: true,
                 candidato: {
                     select: {
                         usuario: {
@@ -512,6 +513,15 @@ let PostulacionesService = class PostulacionesService {
                             }
                         }
                     }
+                },
+                analisis: {
+                    select: {
+                        puntuacion: true,
+                        apto: true,
+                        fortalezas: true,
+                        debilidades: true,
+                        resumen: true
+                    }
                 }
             }
         });
@@ -519,11 +529,19 @@ let PostulacionesService = class PostulacionesService {
                 id: p.id,
                 estado: p.estado,
                 creadaEl: p.creadaEl,
+                urlCv: p.urlCv,
                 candidato: {
                     id: p.candidato.usuario.id,
                     fullName: p.candidato.usuario.fullName,
                     email: p.candidato.usuario.email
-                }
+                },
+                analisis: p.analisis ? {
+                    puntuacion: p.analisis.puntuacion,
+                    apto: p.analisis.apto,
+                    fortalezas: p.analisis.fortalezas,
+                    debilidades: p.analisis.debilidades,
+                    resumen: p.analisis.resumen
+                } : null
             }));
     }
     // ────────────────────────────────────────────────────────────

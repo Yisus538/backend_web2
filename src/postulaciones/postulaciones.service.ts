@@ -385,9 +385,19 @@ export class PostulacionesService {
         id:       true,
         estado:   true,
         creadaEl: true,
+        urlCv:    true,
         candidato: {
           select: {
             usuario: { select: { id: true, fullName: true, email: true } },
+          },
+        },
+        analisis: {
+          select: {
+            puntuacion:  true,
+            apto:        true,
+            fortalezas:  true,
+            debilidades: true,
+            resumen:     true,
           },
         },
       },
@@ -397,11 +407,21 @@ export class PostulacionesService {
       id:       p.id,
       estado:   p.estado,
       creadaEl: p.creadaEl,
+      urlCv:    p.urlCv,
       candidato: {
         id:       p.candidato.usuario.id,
         fullName: p.candidato.usuario.fullName,
         email:    p.candidato.usuario.email,
       },
+      analisis: p.analisis
+        ? {
+            puntuacion:  p.analisis.puntuacion,
+            apto:        p.analisis.apto,
+            fortalezas:  p.analisis.fortalezas  as string[],
+            debilidades: p.analisis.debilidades as string[],
+            resumen:     p.analisis.resumen,
+          }
+        : null,
     }));
   }
 
