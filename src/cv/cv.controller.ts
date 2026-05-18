@@ -22,8 +22,6 @@ import { CurrentUser, JwtPayload } from '../common/decorators/current-user.decor
 import { CvService } from './cv.service';
 import { CvAnalisisDto } from './dto/cv-analisis.dto';
 
-const MAKE_WEBHOOK_URL = 'https://hook.us2.make.com/r7dc3o8jguw9t7olo1byd40knnfco6ks';
-const MAKE_API_KEY     = 'jitKx-t9QAJBR2_';
 
 @Controller('cv')
 export class CvController {
@@ -220,13 +218,22 @@ export class CvController {
       file.originalname,
     );
 
-    const url = `${MAKE_WEBHOOK_URL}?candidatoId=${encodeURIComponent(candidatoId)}`;
+    const makeUrl = process.env.MAKE_CV_WEBHOOK_URL ?? '';
+    if (!makeUrl) {
+      this.logger.warn('[sendToMake] MAKE_CV_WEBHOOK_URL no configurada — saltando análisis IA');
+      return;
+    }
+    const url = `${makeUrl}?candidatoId=${encodeURIComponent(candidatoId)}`;
 
     this.logger.log(`[sendToMake] Enviando CV a Make para candidato ${candidatoId}`);
 
+    const apiKey = process.env.MAKE_CV_API_KEY ?? '';
+    const headers: Record<string, string> = {};
+    if (apiKey) headers['x-make-apikey'] = apiKey;
+
     const response = await fetch(url, {
       method:  'POST',
-      headers: { 'x-make-apikey': MAKE_API_KEY },
+      headers,
       body:    formData,
       signal:  AbortSignal.timeout(15_000),
     });
