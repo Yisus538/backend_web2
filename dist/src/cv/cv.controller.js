@@ -177,7 +177,7 @@ let CvController = class CvController {
         }
         const url = `${makeUrl}?candidatoId=${encodeURIComponent(candidatoId)}`;
         this.logger.log(`[sendToMake] Enviando CV a Make para candidato ${candidatoId}`);
-        const apiKey = process.env.MAKE_CV_API_KEY ?? '';
+        const apiKey = process.env.MAKE_API_KEY ?? '';
         const headers = {};
         if (apiKey) headers['x-make-apikey'] = apiKey;
         const response = await fetch(url, {

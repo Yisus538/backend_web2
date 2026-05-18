@@ -227,7 +227,7 @@ export class CvController {
 
     this.logger.log(`[sendToMake] Enviando CV a Make para candidato ${candidatoId}`);
 
-    const apiKey = process.env.MAKE_CV_API_KEY ?? '';
+    const apiKey = process.env.MAKE_API_KEY ?? '';
     const headers: Record<string, string> = {};
     if (apiKey) headers['x-make-apikey'] = apiKey;
 
