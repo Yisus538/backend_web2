@@ -9,48 +9,94 @@ Object.defineProperty(exports, "EmailService", {
     }
 });
 const _common = require("@nestjs/common");
+const _nodemailer = /*#__PURE__*/ _interop_require_wildcard(require("nodemailer"));
+function _getRequireWildcardCache(nodeInterop) {
+    if (typeof WeakMap !== "function") return null;
+    var cacheBabelInterop = new WeakMap();
+    var cacheNodeInterop = new WeakMap();
+    return (_getRequireWildcardCache = function(nodeInterop) {
+        return nodeInterop ? cacheNodeInterop : cacheBabelInterop;
+    })(nodeInterop);
+}
+function _interop_require_wildcard(obj, nodeInterop) {
+    if (!nodeInterop && obj && obj.__esModule) {
+        return obj;
+    }
+    if (obj === null || typeof obj !== "object" && typeof obj !== "function") {
+        return {
+            default: obj
+        };
+    }
+    var cache = _getRequireWildcardCache(nodeInterop);
+    if (cache && cache.has(obj)) {
+        return cache.get(obj);
+    }
+    var newObj = {
+        __proto__: null
+    };
+    var hasPropertyDescriptor = Object.defineProperty && Object.getOwnPropertyDescriptor;
+    for(var key in obj){
+        if (key !== "default" && Object.prototype.hasOwnProperty.call(obj, key)) {
+            var desc = hasPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : null;
+            if (desc && (desc.get || desc.set)) {
+                Object.defineProperty(newObj, key, desc);
+            } else {
+                newObj[key] = obj[key];
+            }
+        }
+    }
+    newObj.default = obj;
+    if (cache) {
+        cache.set(obj, newObj);
+    }
+    return newObj;
+}
 function _ts_decorate(decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
     else for(var i = decorators.length - 1; i >= 0; i--)if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 }
-const RESEND_URL = 'https://api.resend.com/emails';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 let EmailService = class EmailService {
-    async send(to, subject, html) {
-        const apiKey = process.env.RESEND_API_KEY;
-        if (!apiKey) throw new Error('RESEND_API_KEY no configurada');
-        const from = process.env.RESEND_FROM || 'ReclutaIA <onboarding@resend.dev>';
-        this.logger.log(`Enviando a: ${to} | Subject: ${subject}`);
-        const res = await fetch(RESEND_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${apiKey}`
-            },
-            body: JSON.stringify({
-                from,
-                to: [
-                    to
-                ],
-                subject,
-                html
-            }),
-            signal: AbortSignal.timeout(10_000)
-        });
-        const body = await res.json().catch(()=>({}));
-        if (!res.ok) {
-            if (res.status === 403 || body?.name === 'validation_error') {
-                this.logger.error('⚠️  Dominio de remitente no verificado en Resend. ' + 'Verificá en https://resend.com/domains o usá onboarding@resend.dev');
-            }
-            throw new Error(body.message || `Error Resend (${res.status})`);
+    onModuleInit() {
+        const user = process.env.MAIL_USER;
+        const pass = process.env.MAIL_PASS;
+        if (!user || !pass) {
+            this.logger.warn('MAIL_USER o MAIL_PASS no configurados — emails deshabilitados');
+            return;
         }
-        this.logger.log(`✅ Email enviado a ${to} | ID: ${body.id}`);
+        this.transporter = _nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+                user,
+                pass
+            }
+        });
+        this.transporter.verify().then(()=>{
+            this.logger.log(`✅ Gmail SMTP listo → ${user}`);
+        }).catch((err)=>{
+            this.logger.error(`❌ Gmail SMTP falló al verificar: ${err.message}`);
+        });
+    }
+    async send(to, subject, html) {
+        if (!this.transporter) {
+            this.logger.warn(`Email omitido (transporter no configurado) → ${to}`);
+            return;
+        }
+        const from = process.env.RESEND_FROM || `ReclutaIA <${process.env.MAIL_USER}>`;
+        this.logger.log(`Enviando a: ${to} | Subject: ${subject}`);
+        const info = await this.transporter.sendMail({
+            from,
+            to,
+            subject,
+            html
+        });
+        this.logger.log(`✅ Email enviado a ${to} | ID: ${info.messageId}`);
     }
     // ─── Verificación de cuenta ─────────────────────────────────
     async sendVerificationEmail(email, fullName, token) {
-        const verifyUrl = `${FRONTEND_URL}/index.html#/verify-email?token=${token}`;
+        const verifyUrl = `${FRONTEND_URL}/#/verify-email?token=${token}`;
         await this.send(email, 'Verificá tu cuenta — ReclutaIA', `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px;">
         <h2 style="color:#1a405b;">Hola, ${fullName}!</h2>
         <p>Gracias por registrarte en <strong>ReclutaIA</strong>.</p>
@@ -69,7 +115,7 @@ let EmailService = class EmailService {
     }
     // ─── Reseteo de contraseña ───────────────────────────────────
     async sendPasswordResetEmail(email, resetToken) {
-        const resetUrl = `${FRONTEND_URL}/index.html#/reset-password?token=${resetToken}`;
+        const resetUrl = `${FRONTEND_URL}/#/reset-password?token=${resetToken}`;
         const expiryMin = process.env.RESET_TOKEN_EXPIRES_MINUTES || '60';
         await this.send(email, 'Restablecer contraseña — ReclutaIA', `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px;">
         <h2 style="color:#1a405b;">Restablecer contraseña</h2>

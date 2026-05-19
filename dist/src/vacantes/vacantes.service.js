@@ -547,35 +547,36 @@ let VacantesService = class VacantesService {
             }
         });
         if (!item) throw new _common.NotFoundException('Vacante no encontrada o no disponible');
-        // ── ¿Ya aplicó este candidato? ───────────────────────────
-        const postulacion = await this.prisma.postulacion.findUnique({
-            where: {
-                ofertaId_candidatoId: {
-                    ofertaId: id,
-                    candidatoId: userId
+        // ── Queries independientes en paralelo ───────────────────
+        const [postulacion, candidato] = await Promise.all([
+            this.prisma.postulacion.findUnique({
+                where: {
+                    ofertaId_candidatoId: {
+                        ofertaId: id,
+                        candidatoId: userId
+                    }
+                },
+                select: {
+                    id: true
                 }
-            },
-            select: {
-                id: true
-            }
-        });
-        // ── Habilidades del candidato para calcular match ────────
-        const candidato = await this.prisma.candidato.findUnique({
-            where: {
-                usuarioId: userId
-            },
-            select: {
-                habilidades: {
-                    select: {
-                        habilidad: {
-                            select: {
-                                nombre: true
+            }),
+            this.prisma.candidato.findUnique({
+                where: {
+                    usuarioId: userId
+                },
+                select: {
+                    habilidades: {
+                        select: {
+                            habilidad: {
+                                select: {
+                                    nombre: true
+                                }
                             }
                         }
                     }
                 }
-            }
-        });
+            })
+        ]);
         const candidateSkills = (candidato?.habilidades ?? []).map((h)=>h.habilidad.nombre);
         // ── Match score ──────────────────────────────────────────
         const matchScore = (0, _matchscoreutils.calcMatchScore)(candidateSkills, item.requisitos);
