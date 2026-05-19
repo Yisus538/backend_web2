@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ConflictException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { calcMatchScore } from '../common/utils/match-score.utils';
 
@@ -88,53 +89,63 @@ export class FavoritosService {
     });
     if (!oferta) throw new NotFoundException('Vacante no encontrada o no está activa');
 
-    try {
-      const fav = await this.prisma.vacanteFavorita.create({
-        data: { candidatoId, ofertaId },
-      });
-
-      const habilidades = await this.prisma.candidatoHabilidad.findMany({
+    // Leer habilidades y postulación ANTES de escribir: si estas lecturas fallan
+    // no se crea el registro, y el try/catch queda acotado solo al insert.
+    const [habilidades, postulacion] = await Promise.all([
+      this.prisma.candidatoHabilidad.findMany({
         where:  { candidatoId },
         select: { habilidad: { select: { nombre: true } } },
-      });
-      const candidateSkills = habilidades.map((h) => h.habilidad.nombre);
-
-      const postulacion = await this.prisma.postulacion.findFirst({
+      }),
+      this.prisma.postulacion.findFirst({
         where:  { candidatoId, ofertaId },
         select: { id: true },
-      });
+      }),
+    ]);
+    const candidateSkills = habilidades.map((h) => h.habilidad.nombre);
 
-      return {
-        favorito: {
-          id:          oferta.id,
-          titulo:      oferta.titulo,
-          descripcion: oferta.descripcion,
-          categoria:   oferta.categoria,
-          modalidad:   oferta.modalidad ?? 'Sin especificar',
-          empresa:     oferta.empresa?.nombreEmpresa ?? 'Empresa',
-          ubicacion:   oferta.empresa?.usuario?.ubicacion ?? oferta.ubicacion ?? 'Sin ubicación',
-          creadaEl:    oferta.creadaEl,
-          savedAt:     fav.guardadoEl,
-          matchScore:  calcMatchScore(candidateSkills, oferta.requisitos),
-          yaAplico:    !!postulacion,
-        },
-      };
-    } catch (err: any) {
-      // Unique constraint violation → ya existe
-      if (err?.code === 'P2002') throw new ConflictException('La vacante ya está en favoritos');
+    // Solo el create puede lanzar P2002 (duplicate key).
+    let fav: { guardadoEl: Date };
+    try {
+      fav = await this.prisma.vacanteFavorita.create({
+        data:   { candidatoId, ofertaId },
+        select: { guardadoEl: true },
+      });
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        throw new ConflictException('La vacante ya está en favoritos');
+      }
       throw err;
     }
+
+    return {
+      favorito: {
+        id:          oferta.id,
+        titulo:      oferta.titulo,
+        descripcion: oferta.descripcion,
+        categoria:   oferta.categoria,
+        modalidad:   oferta.modalidad ?? 'Sin especificar',
+        empresa:     oferta.empresa?.nombreEmpresa ?? 'Empresa',
+        ubicacion:   oferta.empresa?.usuario?.ubicacion ?? oferta.ubicacion ?? 'Sin ubicación',
+        creadaEl:    oferta.creadaEl,
+        savedAt:     fav.guardadoEl,
+        matchScore:  calcMatchScore(candidateSkills, oferta.requisitos),
+        yaAplico:    !!postulacion,
+      },
+    };
   }
 
   // DELETE /api/favoritos/:ofertaId
   async eliminar(candidatoId: string, ofertaId: string) {
-    const existing = await this.prisma.vacanteFavorita.findUnique({
-      where: { candidatoId_ofertaId: { candidatoId, ofertaId } },
-    });
-    if (!existing) throw new NotFoundException('El favorito no existe');
-
-    await this.prisma.vacanteFavorita.delete({
-      where: { candidatoId_ofertaId: { candidatoId, ofertaId } },
-    });
+    try {
+      await this.prisma.vacanteFavorita.delete({
+        where: { candidatoId_ofertaId: { candidatoId, ofertaId } },
+      });
+    } catch (err) {
+      // P2025: registro no encontrado
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2025') {
+        throw new NotFoundException('El favorito no existe');
+      }
+      throw err;
+    }
   }
 }
