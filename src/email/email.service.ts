@@ -1,47 +1,53 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import * as nodemailer from 'nodemailer';
+import type { Transporter } from 'nodemailer';
 
-const RESEND_URL   = 'https://api.resend.com/emails';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
 @Injectable()
-export class EmailService {
+export class EmailService implements OnModuleInit {
   private readonly logger = new Logger(EmailService.name);
+  private transporter: Transporter;
 
-  private async send(to: string, subject: string, html: string): Promise<void> {
-    const apiKey = process.env.RESEND_API_KEY;
-    if (!apiKey) throw new Error('RESEND_API_KEY no configurada');
+  onModuleInit() {
+    const user = process.env.MAIL_USER;
+    const pass = process.env.MAIL_PASS;
 
-    const from = process.env.RESEND_FROM || 'ReclutaIA <onboarding@resend.dev>';
-    this.logger.log(`Enviando a: ${to} | Subject: ${subject}`);
-
-    const res = await fetch(RESEND_URL, {
-      method:  'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization:  `Bearer ${apiKey}`,
-      },
-      body:   JSON.stringify({ from, to: [to], subject, html }),
-      signal: AbortSignal.timeout(10_000),
-    });
-
-    const body = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
-      if (res.status === 403 || (body as any)?.name === 'validation_error') {
-        this.logger.error(
-          '⚠️  Dominio de remitente no verificado en Resend. ' +
-          'Verificá en https://resend.com/domains o usá onboarding@resend.dev',
-        );
-      }
-      throw new Error((body as any).message || `Error Resend (${res.status})`);
+    if (!user || !pass) {
+      this.logger.warn('MAIL_USER o MAIL_PASS no configurados — emails deshabilitados');
+      return;
     }
 
-    this.logger.log(`✅ Email enviado a ${to} | ID: ${(body as any).id}`);
+    this.transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: { user, pass },
+    });
+
+    this.transporter.verify().then(() => {
+      this.logger.log(`✅ Gmail SMTP listo → ${user}`);
+    }).catch((err) => {
+      this.logger.error(`❌ Gmail SMTP falló al verificar: ${err.message}`);
+    });
+  }
+
+  private async send(to: string, subject: string, html: string): Promise<void> {
+    if (!this.transporter) {
+      this.logger.warn(`Email omitido (transporter no configurado) → ${to}`);
+      return;
+    }
+
+    const from = process.env.RESEND_FROM || `ReclutaIA <${process.env.MAIL_USER}>`;
+
+    this.logger.log(`Enviando a: ${to} | Subject: ${subject}`);
+
+    const info = await this.transporter.sendMail({ from, to, subject, html });
+
+    this.logger.log(`✅ Email enviado a ${to} | ID: ${info.messageId}`);
   }
 
   // ─── Verificación de cuenta ─────────────────────────────────
   async sendVerificationEmail(email: string, fullName: string, token: string): Promise<void> {
-    const verifyUrl = `${FRONTEND_URL}/index.html#/verify-email?token=${token}`;
+    const verifyUrl = `${FRONTEND_URL}/#/verify-email?token=${token}`;
     await this.send(
       email,
       'Verificá tu cuenta — ReclutaIA',
@@ -65,7 +71,7 @@ export class EmailService {
 
   // ─── Reseteo de contraseña ───────────────────────────────────
   async sendPasswordResetEmail(email: string, resetToken: string): Promise<void> {
-    const resetUrl  = `${FRONTEND_URL}/index.html#/reset-password?token=${resetToken}`;
+    const resetUrl  = `${FRONTEND_URL}/#/reset-password?token=${resetToken}`;
     const expiryMin = process.env.RESET_TOKEN_EXPIRES_MINUTES || '60';
     await this.send(
       email,

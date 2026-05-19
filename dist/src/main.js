@@ -24,8 +24,9 @@ const ALLOWED_ORIGINS = [
     'http://127.0.0.1:5175',
     'http://localhost:5177',
     'http://127.0.0.1:5177',
-    'https://frontendweb2-production.up.railway.app'
-];
+    // URL del frontend en producción (Vercel / Railway)
+    process.env.FRONTEND_URL
+].filter(Boolean);
 async function bootstrap() {
     const app = await _core.NestFactory.create(_appmodule.AppModule);
     app.set('trust proxy', 1);

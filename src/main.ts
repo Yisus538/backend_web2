@@ -18,7 +18,9 @@ const ALLOWED_ORIGINS = [
   'http://localhost:5177',
   'http://127.0.0.1:5177',
   'https://frontendweb2-production.up.railway.app',
-];
+  // URL dinámica del frontend (Vercel / Railway) — configurable sin redeploy
+  process.env.FRONTEND_URL,
+].filter(Boolean) as string[];
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);

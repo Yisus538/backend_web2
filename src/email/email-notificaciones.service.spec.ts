@@ -1,23 +1,32 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { EmailService } from './email.service';
+import * as nodemailer from 'nodemailer';
 
-global.fetch = jest.fn();
+jest.mock('nodemailer');
+
+const mockSendMail = jest.fn().mockResolvedValue({ messageId: 'test-id' });
+const mockVerify   = jest.fn().mockResolvedValue(true);
+
+(nodemailer.createTransport as jest.Mock).mockReturnValue({
+  sendMail: mockSendMail,
+  verify:   mockVerify,
+});
 
 describe('EmailService — métodos de notificación', () => {
   let service: EmailService;
 
   beforeEach(async () => {
-    process.env.RESEND_API_KEY = 'test-key';
-    process.env.RESEND_FROM    = 'test@resend.dev';
-    (fetch as jest.Mock).mockResolvedValue({
-      ok: true,
-      json: async () => ({ id: 'email-123' }),
-    });
+    process.env.MAIL_USER   = 'test@gmail.com';
+    process.env.MAIL_PASS   = 'test-app-password';
+    process.env.RESEND_FROM = 'ReclutaIA <test@gmail.com>';
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [EmailService],
     }).compile();
+
     service = module.get<EmailService>(EmailService);
+    // Ejecutar onModuleInit manualmente (NestJS lo hace automáticamente en prod)
+    await service.onModuleInit();
   });
 
   afterEach(() => jest.clearAllMocks());
@@ -34,18 +43,25 @@ describe('EmailService — métodos de notificación', () => {
     ['sendContratadoNotification',    ['e@t.com', 'Juan', 'Dev']],
   ];
 
-  it.each(METODOS)('%s llama a fetch con los datos correctos', async (method, args) => {
+  it.each(METODOS)('%s llama a sendMail con los datos correctos', async (method, args) => {
     await (service as any)[method](...args);
-    expect(fetch).toHaveBeenCalledWith(
-      'https://api.resend.com/emails',
-      expect.objectContaining({ method: 'POST' }),
+    expect(mockSendMail).toHaveBeenCalledWith(
+      expect.objectContaining({ to: 'e@t.com' }),
     );
   });
 
-  it('no lanza si RESEND_API_KEY no está configurada — lanza error descriptivo', async () => {
-    delete process.env.RESEND_API_KEY;
-    await expect(
-      service.sendPostulacionRecibida('e@t.com', 'Juan', 'Dev', 'Co')
-    ).rejects.toThrow('RESEND_API_KEY no configurada');
+  it('omite el envío si MAIL_USER no está configurado', async () => {
+    delete process.env.MAIL_USER;
+    delete process.env.MAIL_PASS;
+    // Nuevo servicio sin credenciales
+    const module2 = await Test.createTestingModule({
+      providers: [EmailService],
+    }).compile();
+    const service2 = module2.get<EmailService>(EmailService);
+    await service2.onModuleInit();
+
+    await service2.sendPostulacionRecibida('e@t.com', 'Juan', 'Dev', 'Co');
+    // No debe lanzar ni llamar a sendMail
+    expect(mockSendMail).not.toHaveBeenCalled();
   });
 });
