@@ -56,6 +56,7 @@ describe('PostulacionesService', () => {
 
     const mockCandidato = {
       usuarioId: userId,
+      urlCv: 'https://example.com/cv.pdf',
       usuario: { email: 'cand@test.com', fullName: 'Juan Pérez' },
     };
 
@@ -71,7 +72,6 @@ describe('PostulacionesService', () => {
     it('debe lanzar ConflictException si ya existe una postulación', async () => {
       mockPrisma.ofertaLaboral.findFirst.mockResolvedValue(mockOferta);
       mockPrisma.candidato.findUnique.mockResolvedValue(mockCandidato);
-      mockPrisma.analisisCvDirecto.findFirst.mockResolvedValue(null);
       mockPrisma.postulacion.findUnique.mockResolvedValue({ id: 'exist-123' });
       await expect(service.crear(userId, ofertaId)).rejects.toThrow(ConflictException);
     });
@@ -79,9 +79,6 @@ describe('PostulacionesService', () => {
     it('debe crear postulación con estado "analizando" si hay cvUrl', async () => {
       mockPrisma.ofertaLaboral.findFirst.mockResolvedValue(mockOferta);
       mockPrisma.candidato.findUnique.mockResolvedValue(mockCandidato);
-      mockPrisma.analisisCvDirecto.findFirst.mockResolvedValue({
-        cvCompleto: { cvUrl: 'https://example.com/cv.pdf' },
-      });
       mockPrisma.postulacion.findUnique.mockResolvedValue(null);
       mockPrisma.postulacion.create.mockResolvedValue({
         id: 'post-789', estado: 'analizando', creadaEl: new Date(),
@@ -91,44 +88,34 @@ describe('PostulacionesService', () => {
       const result = await service.crear(userId, ofertaId);
 
       expect(mockPrisma.postulacion.create).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ estado: 'analizando' }) })
+        expect.objectContaining({ data: expect.objectContaining({ estado: 'analizando', urlCv: mockCandidato.urlCv }) })
       );
       expect(mockEmail.sendPostulacionRecibida).toHaveBeenCalled();
       expect(result.estado).toBe('analizando');
     });
 
-    it('debe pasar a "pendiente" directamente si no hay cvUrl', async () => {
+    it('debe lanzar BadRequestException si el candidato no tiene CV cargado', async () => {
+      const candidatoSinCv = { ...mockCandidato, urlCv: null };
       mockPrisma.ofertaLaboral.findFirst.mockResolvedValue(mockOferta);
-      mockPrisma.candidato.findUnique.mockResolvedValue(mockCandidato);
-      mockPrisma.analisisCvDirecto.findFirst.mockResolvedValue(null);
+      mockPrisma.candidato.findUnique.mockResolvedValue(candidatoSinCv);
       mockPrisma.postulacion.findUnique.mockResolvedValue(null);
-      mockPrisma.postulacion.create.mockResolvedValue({
-        id: 'post-789', estado: 'analizando', creadaEl: new Date(),
-        oferta: { titulo: 'Dev Senior' },
-      });
-      mockPrisma.postulacion.update.mockResolvedValue({});
 
-      await service.crear(userId, ofertaId);
-
-      expect(mockPrisma.postulacion.update).toHaveBeenCalledWith(
-        expect.objectContaining({ data: { estado: 'pendiente' } })
-      );
+      await expect(service.crear(userId, ofertaId)).rejects.toThrow(BadRequestException);
+      expect(mockPrisma.postulacion.create).not.toHaveBeenCalled();
     });
 
     it('debe auto-crear perfil candidato si no existe', async () => {
       mockPrisma.ofertaLaboral.findFirst.mockResolvedValue(mockOferta);
-      // Primer llamado retorna null, segundo retorna el candidato creado
+      // Primer llamado retorna null, segundo retorna el candidato creado (con urlCv)
       mockPrisma.candidato.findUnique
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce(mockCandidato);
       mockPrisma.candidato.create.mockResolvedValue({});
-      mockPrisma.analisisCvDirecto.findFirst.mockResolvedValue(null);
       mockPrisma.postulacion.findUnique.mockResolvedValue(null);
       mockPrisma.postulacion.create.mockResolvedValue({
         id: 'post-789', estado: 'analizando', creadaEl: new Date(),
         oferta: { titulo: 'Dev Senior' },
       });
-      mockPrisma.postulacion.update.mockResolvedValue({});
 
       await service.crear(userId, ofertaId);
 

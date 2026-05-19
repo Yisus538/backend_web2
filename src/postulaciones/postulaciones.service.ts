@@ -118,20 +118,22 @@ export class PostulacionesService {
     });
     if (existente) throw new ConflictException('Ya te postulaste a esta vacante');
 
-    // Obtener CV URL del último análisis del candidato
-    const ultimoAnalisis = await this.prisma.analisisCvDirecto.findFirst({
-      where: { candidatoId: userId },
-      orderBy: { analizadoEl: 'desc' },
-      select: { cvCompleto: true },
-    });
+    // La URL del CV se persiste en candidato.urlCv por cv.controller.ts
+    // tras cada upload exitoso a Cloudinary.
+    const cvUrl: string | null = candidato!.urlCv ?? null;
 
-    const cvUrl: string | null = (ultimoAnalisis?.cvCompleto as any)?.cvUrl ?? null;
+    if (!cvUrl) {
+      throw new BadRequestException(
+        'Necesitás subir tu CV antes de postularte. ' +
+        'Podés hacerlo desde tu perfil en la sección "Gestión de CV".',
+      );
+    }
 
     const postulacion = await this.prisma.postulacion.create({
       data: {
         ofertaId,
         candidatoId: userId,
-        urlCv:       cvUrl ?? '',
+        urlCv:       cvUrl,
         estado:      'analizando',
       },
       select: {
@@ -150,27 +152,10 @@ export class PostulacionesService {
       oferta.empresa.nombreEmpresa ?? oferta.empresa.usuario.fullName,
     ).catch(err => console.error('[postulacion/crear] email error:', err));
 
-    if (cvUrl) {
-      // Fire-and-forget → Make.com
-      this.enviarAMake(postulacion.id, cvUrl, oferta).catch(err =>
-        console.error('[postulacion/crear] make error:', err),
-      );
-    } else {
-      // Sin CV: pasar a pendiente directamente
-      await this.prisma.postulacion.update({
-        where: { id: postulacion.id },
-        data:  { estado: 'pendiente' },
-      });
-
-      const empresaEmail = oferta.empresa.usuario.email;
-      if (empresaEmail) {
-        this.email.sendPostulantePendiente(
-          empresaEmail,
-          oferta.titulo,
-          candidato!.usuario.fullName,
-        ).catch(err => console.error('[postulacion/crear] email empresa error:', err));
-      }
-    }
+    // Fire-and-forget a Make.com — cvUrl garantizado
+    this.enviarAMake(postulacion.id, cvUrl, oferta).catch(err =>
+      console.error('[postulacion/crear] make error:', err),
+    );
 
     return postulacion;
   }
