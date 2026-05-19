@@ -1,6 +1,10 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import * as dns from 'dns';
+import { promisify } from 'util';
 import * as nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
+
+const resolve4 = promisify(dns.resolve4);
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
@@ -9,7 +13,7 @@ export class EmailService implements OnModuleInit {
   private readonly logger = new Logger(EmailService.name);
   private transporter: Transporter;
 
-  onModuleInit() {
+  async onModuleInit() {
     const user = process.env.MAIL_USER;
     const pass = process.env.MAIL_PASS;
 
@@ -18,8 +22,19 @@ export class EmailService implements OnModuleInit {
       return;
     }
 
+    // Resolver smtp.gmail.com a IPv4 explícitamente para evitar que
+    // Railway intente conectarse por IPv6 (no tiene salida IPv6)
+    let smtpHost = 'smtp.gmail.com';
+    try {
+      const [ipv4] = await resolve4('smtp.gmail.com');
+      smtpHost = ipv4;
+      this.logger.log(`SMTP host resuelto a IPv4: ${smtpHost}`);
+    } catch (err) {
+      this.logger.warn(`No se pudo resolver smtp.gmail.com a IPv4, usando hostname: ${err.message}`);
+    }
+
     this.transporter = nodemailer.createTransport({
-      host: 'smtp.gmail.com',
+      host: smtpHost,
       port: 465,
       secure: true,
       auth: { user, pass },
