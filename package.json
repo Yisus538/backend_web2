@@ -9,7 +9,7 @@
     "build": "prisma generate && nest build",
     "start": "node dist/src/main",
     "prestart:dev": "lsof -ti :3000 | xargs kill -9 2>/dev/null || true",
-    "start:dev": "nest start --watch",
+    "start:dev": "NODE_OPTIONS='--experimental-require-module' nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "prisma migrate deploy && node dist/src/main",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\"",
