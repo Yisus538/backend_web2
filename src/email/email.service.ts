@@ -1,48 +1,48 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import * as nodemailer from 'nodemailer';
+import type { Transporter } from 'nodemailer';
 
-const RESEND_URL   = 'https://api.resend.com/emails';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
 @Injectable()
-export class EmailService {
+export class EmailService implements OnModuleInit {
   private readonly logger = new Logger(EmailService.name);
+  private transporter: Transporter;
 
-  private async send(to: string, subject: string, html: string): Promise<void> {
-    const apiKey = process.env.RESEND_API_KEY;
-    if (!apiKey) throw new Error('RESEND_API_KEY no configurada');
+  onModuleInit() {
+    const user = process.env.MAIL_USER;
+    const pass = process.env.MAIL_PASS;
 
-    const from = process.env.RESEND_FROM || 'ReclutaIA <onboarding@resend.dev>';
-    this.logger.log(`Enviando a: ${to} | Subject: ${subject}`);
-
-    const res = await fetch(RESEND_URL, {
-      method:  'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization:  `Bearer ${apiKey}`,
-      },
-      body:   JSON.stringify({ from, to: [to], subject, html }),
-      signal: AbortSignal.timeout(10_000),
-    });
-
-    const body = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
-      this.logger.error(
-        `❌ Resend error ${res.status} | to: ${to} | from: ${from} | ` +
-        `name: ${(body as any)?.name} | message: ${(body as any)?.message}`,
-      );
-      if (res.status === 403 || res.status === 422 || (body as any)?.name === 'validation_error') {
-        this.logger.error(
-          '⚠️  Causa probable: el dominio remitente no está verificado en Resend. ' +
-          'onboarding@resend.dev solo envía al email dueño de la cuenta. ' +
-          'Solución: verificar dominio propio en https://resend.com/domains y ' +
-          'actualizar RESEND_FROM en Railway.',
-        );
-      }
-      throw new Error((body as any).message || `Error Resend (${res.status})`);
+    if (!user || !pass) {
+      this.logger.warn('MAIL_USER o MAIL_PASS no configurados — emails deshabilitados');
+      return;
     }
 
-    this.logger.log(`✅ Email enviado a ${to} | ID: ${(body as any).id}`);
+    this.transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: { user, pass },
+    });
+
+    this.transporter.verify().then(() => {
+      this.logger.log(`✅ Gmail SMTP listo → ${user}`);
+    }).catch((err) => {
+      this.logger.error(`❌ Gmail SMTP falló al verificar: ${err.message}`);
+    });
+  }
+
+  private async send(to: string, subject: string, html: string): Promise<void> {
+    if (!this.transporter) {
+      this.logger.warn(`Email omitido (transporter no configurado) → ${to}`);
+      return;
+    }
+
+    const from = process.env.RESEND_FROM || `ReclutaIA <${process.env.MAIL_USER}>`;
+
+    this.logger.log(`Enviando a: ${to} | Subject: ${subject}`);
+
+    const info = await this.transporter.sendMail({ from, to, subject, html });
+
+    this.logger.log(`✅ Email enviado a ${to} | ID: ${info.messageId}`);
   }
 
   // ─── Verificación de cuenta ─────────────────────────────────
