@@ -17,7 +17,9 @@ const ALLOWED_ORIGINS = [
   'http://127.0.0.1:5175',
   'http://localhost:5177',
   'http://127.0.0.1:5177',
-];
+  // URL del frontend en producción (Vercel / Railway)
+  process.env.FRONTEND_URL,
+].filter(Boolean) as string[];
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
