@@ -401,23 +401,23 @@ export class VacantesService {
 
     if (!item) throw new NotFoundException('Vacante no encontrada o no disponible');
 
-    // ── ¿Ya aplicó este candidato? ───────────────────────────
-    const postulacion = await this.prisma.postulacion.findUnique({
-      where: { ofertaId_candidatoId: { ofertaId: id, candidatoId: userId } },
-      select: { id: true },
-    });
-
-    // ── Habilidades del candidato para calcular match ────────
-    const candidato = await this.prisma.candidato.findUnique({
-      where: { usuarioId: userId },
-      select: {
-        habilidades: {
-          select: {
-            habilidad: { select: { nombre: true } },
+    // ── Queries independientes en paralelo ───────────────────
+    const [postulacion, candidato] = await Promise.all([
+      this.prisma.postulacion.findUnique({
+        where: { ofertaId_candidatoId: { ofertaId: id, candidatoId: userId } },
+        select: { id: true },
+      }),
+      this.prisma.candidato.findUnique({
+        where: { usuarioId: userId },
+        select: {
+          habilidades: {
+            select: {
+              habilidad: { select: { nombre: true } },
+            },
           },
         },
-      },
-    });
+      }),
+    ]);
     const candidateSkills: string[] = (candidato?.habilidades ?? [])
       .map((h) => h.habilidad.nombre);
 
