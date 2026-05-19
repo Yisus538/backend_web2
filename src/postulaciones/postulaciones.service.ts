@@ -99,16 +99,24 @@ export class PostulacionesService {
     });
     if (!oferta) throw new NotFoundException('La vacante no existe o no está disponible');
 
+    const profileInclude = {
+      usuario:    { select: { email: true, fullName: true } },
+      habilidades: { include: { habilidad: { select: { nombre: true } } } },
+      educacion:   true,
+      experiencia: true,
+      idiomas:     true,
+    } as const;
+
     // Auto-crear perfil candidato si no existe
     let candidato = await this.prisma.candidato.findUnique({
-      where: { usuarioId: userId },
-      include: { usuario: { select: { email: true, fullName: true } } },
+      where:   { usuarioId: userId },
+      include: profileInclude,
     });
     if (!candidato) {
       await this.prisma.candidato.create({ data: { usuarioId: userId } });
       candidato = await this.prisma.candidato.findUnique({
-        where: { usuarioId: userId },
-        include: { usuario: { select: { email: true, fullName: true } } },
+        where:   { usuarioId: userId },
+        include: profileInclude,
       });
     }
 
@@ -152,8 +160,29 @@ export class PostulacionesService {
       oferta.empresa.nombreEmpresa ?? oferta.empresa.usuario.fullName,
     ).catch(err => console.error('[postulacion/crear] email error:', err));
 
+    const candidatoData = {
+      nombre:      candidato!.usuario.fullName,
+      habilidades: (candidato!.habilidades ?? []).map(h => h.habilidad.nombre),
+      educacion:   (candidato!.educacion   ?? []).map(e => ({
+        institucion: e.institucion,
+        titulo:      e.titulo,
+        fechaInicio: e.fechaInicio,
+        fechaFin:    e.fechaFin,
+        cursando:    e.cursando,
+      })),
+      experiencia: (candidato!.experiencia ?? []).map(e => ({
+        empresa:     e.empresa,
+        cargo:       e.cargo,
+        fechaInicio: e.fechaInicio,
+        fechaFin:    e.fechaFin,
+        actual:      e.actual,
+        descripcion: e.descripcion ?? null,
+      })),
+      idiomas: (candidato!.idiomas ?? []).map(i => ({ idioma: i.idioma, nivel: i.nivel })),
+    };
+
     // Fire-and-forget a Make.com — cvUrl garantizado
-    this.enviarAMake(postulacion.id, cvUrl, oferta).catch(err =>
+    this.enviarAMake(postulacion.id, cvUrl, oferta, candidatoData).catch(err =>
       console.error('[postulacion/crear] make error:', err),
     );
 
@@ -439,6 +468,13 @@ export class PostulacionesService {
       categoria: string | null;
       modalidad: string | null;
     },
+    candidatoData: {
+      nombre:      string;
+      habilidades: string[];
+      educacion:   { institucion: string; titulo: string; fechaInicio: string; fechaFin: string | null; cursando: boolean }[];
+      experiencia: { empresa: string; cargo: string; fechaInicio: string; fechaFin: string | null; actual: boolean; descripcion: string | null }[];
+      idiomas:     { idioma: string; nivel: string }[];
+    },
   ): Promise<void> {
     const webhookUrl = process.env.MAKE_POSTULACION_WEBHOOK_URL;
     if (!webhookUrl) {
@@ -449,6 +485,7 @@ export class PostulacionesService {
     const payload = {
       postulacionId,
       cvUrl,
+      candidato: candidatoData,
       vacante: {
         titulo:            oferta.titulo,
         descripcion:       oferta.descripcion,

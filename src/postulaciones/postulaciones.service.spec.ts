@@ -55,9 +55,13 @@ describe('PostulacionesService', () => {
     };
 
     const mockCandidato = {
-      usuarioId: userId,
-      urlCv: 'https://example.com/cv.pdf',
-      usuario: { email: 'cand@test.com', fullName: 'Juan Pérez' },
+      usuarioId:   userId,
+      urlCv:       'https://example.com/cv.pdf',
+      usuario:     { email: 'cand@test.com', fullName: 'Juan Pérez' },
+      habilidades: [],
+      educacion:   [],
+      experiencia: [],
+      idiomas:     [],
     };
 
     it('debe lanzar BadRequest si ofertaId es vacío', async () => {

@@ -170,19 +170,32 @@ let PostulacionesService = class PostulacionesService {
             }
         });
         if (!oferta) throw new _common.NotFoundException('La vacante no existe o no está disponible');
+        const profileInclude = {
+            usuario: {
+                select: {
+                    email: true,
+                    fullName: true
+                }
+            },
+            habilidades: {
+                include: {
+                    habilidad: {
+                        select: {
+                            nombre: true
+                        }
+                    }
+                }
+            },
+            educacion: true,
+            experiencia: true,
+            idiomas: true
+        };
         // Auto-crear perfil candidato si no existe
         let candidato = await this.prisma.candidato.findUnique({
             where: {
                 usuarioId: userId
             },
-            include: {
-                usuario: {
-                    select: {
-                        email: true,
-                        fullName: true
-                    }
-                }
-            }
+            include: profileInclude
         });
         if (!candidato) {
             await this.prisma.candidato.create({
@@ -194,14 +207,7 @@ let PostulacionesService = class PostulacionesService {
                 where: {
                     usuarioId: userId
                 },
-                include: {
-                    usuario: {
-                        select: {
-                            email: true,
-                            fullName: true
-                        }
-                    }
-                }
+                include: profileInclude
             });
         }
         // Verificar duplicado
@@ -240,8 +246,31 @@ let PostulacionesService = class PostulacionesService {
         });
         // Email inmediato al candidato: confirmación de recepción
         this.email.sendPostulacionRecibida(candidato.usuario.email, candidato.usuario.fullName, oferta.titulo, oferta.empresa.nombreEmpresa ?? oferta.empresa.usuario.fullName).catch((err)=>console.error('[postulacion/crear] email error:', err));
+        const candidatoData = {
+            nombre: candidato.usuario.fullName,
+            habilidades: (candidato.habilidades ?? []).map((h)=>h.habilidad.nombre),
+            educacion: (candidato.educacion ?? []).map((e)=>({
+                    institucion: e.institucion,
+                    titulo: e.titulo,
+                    fechaInicio: e.fechaInicio,
+                    fechaFin: e.fechaFin,
+                    cursando: e.cursando
+                })),
+            experiencia: (candidato.experiencia ?? []).map((e)=>({
+                    empresa: e.empresa,
+                    cargo: e.cargo,
+                    fechaInicio: e.fechaInicio,
+                    fechaFin: e.fechaFin,
+                    actual: e.actual,
+                    descripcion: e.descripcion ?? null
+                })),
+            idiomas: (candidato.idiomas ?? []).map((i)=>({
+                    idioma: i.idioma,
+                    nivel: i.nivel
+                }))
+        };
         // Fire-and-forget a Make.com — cvUrl garantizado
-        this.enviarAMake(postulacion.id, cvUrl, oferta).catch((err)=>console.error('[postulacion/crear] make error:', err));
+        this.enviarAMake(postulacion.id, cvUrl, oferta, candidatoData).catch((err)=>console.error('[postulacion/crear] make error:', err));
         return postulacion;
     }
     // ────────────────────────────────────────────────────────────
@@ -542,7 +571,7 @@ let PostulacionesService = class PostulacionesService {
     // ────────────────────────────────────────────────────────────
     // Privados
     // ────────────────────────────────────────────────────────────
-    async enviarAMake(postulacionId, cvUrl, oferta) {
+    async enviarAMake(postulacionId, cvUrl, oferta, candidatoData) {
         const webhookUrl = process.env.MAKE_POSTULACION_WEBHOOK_URL;
         if (!webhookUrl) {
             console.warn('[make] MAKE_POSTULACION_WEBHOOK_URL no configurada — saltando análisis IA');
@@ -551,6 +580,7 @@ let PostulacionesService = class PostulacionesService {
         const payload = {
             postulacionId,
             cvUrl,
+            candidato: candidatoData,
             vacante: {
                 titulo: oferta.titulo,
                 descripcion: oferta.descripcion,
