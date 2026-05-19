@@ -1,3 +1,7 @@
+import * as dns from 'dns';
+// Railway no tiene IPv6 saliente — forzar IPv4 para todas las conexiones salientes
+dns.setDefaultResultOrder('ipv4first');
+
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { ValidationPipe } from '@nestjs/common';

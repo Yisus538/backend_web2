@@ -18,14 +18,12 @@ export class EmailService implements OnModuleInit {
       return;
     }
 
-    // host explícito + family:4 para forzar IPv4 (Railway no tiene IPv6 saliente)
     this.transporter = nodemailer.createTransport({
       host: 'smtp.gmail.com',
       port: 465,
       secure: true,
-      family: 4,
       auth: { user, pass },
-    } as any);
+    });
 
     this.transporter.verify().then(() => {
       this.logger.log(`✅ Gmail SMTP listo → ${user}`);
