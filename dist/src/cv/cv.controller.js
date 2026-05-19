@@ -15,6 +15,8 @@ const _rolesguard = require("../common/guards/roles.guard");
 const _rolesdecorator = require("../common/decorators/roles.decorator");
 const _currentuserdecorator = require("../common/decorators/current-user.decorator");
 const _cvservice = require("./cv.service");
+const _cloudinaryservice = require("../cloudinary/cloudinary.service");
+const _prismaservice = require("../prisma/prisma.service");
 function _ts_decorate(decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
@@ -36,10 +38,15 @@ let CvController = class CvController {
     // ────────────────────────────────────────────────────────────────
     async analyze(file, user) {
         if (!file) throw new _common.BadRequestException('No se recibió el archivo del CV');
+        // Make es fire-and-forget; Cloudinary se espera para retornar la URL al frontend
         this.sendToMake(file, user.userId).catch((err)=>this.logger.error('[analyze] Error enviando a Make.com:', err));
+        const cvUrl = await this.uploadCvToCloudinary(file, user.userId);
         return {
             ok: true,
-            message: 'CV recibido, procesando...'
+            message: 'CV recibido, procesando...',
+            data: {
+                cvUrl
+            }
         };
     }
     // ────────────────────────────────────────────────────────────────
@@ -159,6 +166,26 @@ let CvController = class CvController {
             message: 'Análisis procesado'
         };
     }
+    // Sube el CV a Cloudinary y persiste la URL en el registro de Candidato.
+    // Retorna la secureUrl, o null si falla (el análisis IA sigue igual).
+    async uploadCvToCloudinary(file, candidatoId) {
+        try {
+            const { secureUrl } = await this.cloudinaryService.uploadCv(file.buffer, candidatoId, file.originalname);
+            await this.prisma.candidato.update({
+                where: {
+                    usuarioId: candidatoId
+                },
+                data: {
+                    urlCv: secureUrl
+                }
+            });
+            this.logger.log(`[analyze] CV subido a Cloudinary: ${secureUrl}`);
+            return secureUrl;
+        } catch (err) {
+            this.logger.error('[analyze] Error subiendo CV a Cloudinary:', err);
+            return null;
+        }
+    }
     // ────────────────────────────────────────────────────────────────
     // Envía el CV a Make.com incluyendo candidatoId como campo de texto.
     // ────────────────────────────────────────────────────────────────
@@ -192,8 +219,10 @@ let CvController = class CvController {
             this.logger.error(`[sendToMake] Error de Make (${response.status}): ${text}`);
         }
     }
-    constructor(cvService){
+    constructor(cvService, cloudinaryService, prisma){
         this.cvService = cvService;
+        this.cloudinaryService = cloudinaryService;
+        this.prisma = prisma;
         this.logger = new _common.Logger(CvController.name);
     }
 };
@@ -256,7 +285,9 @@ CvController = _ts_decorate([
     (0, _common.Controller)('cv'),
     _ts_metadata("design:type", Function),
     _ts_metadata("design:paramtypes", [
-        typeof _cvservice.CvService === "undefined" ? Object : _cvservice.CvService
+        typeof _cvservice.CvService === "undefined" ? Object : _cvservice.CvService,
+        typeof _cloudinaryservice.CloudinaryService === "undefined" ? Object : _cloudinaryservice.CloudinaryService,
+        typeof _prismaservice.PrismaService === "undefined" ? Object : _prismaservice.PrismaService
     ])
 ], CvController);
 

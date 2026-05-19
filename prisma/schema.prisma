@@ -48,6 +48,7 @@ model Empresa {
 model Candidato {
   usuarioId        String               @id @map("usuario_id")
   biografia        String?
+  urlCv            String?              @map("url_cv")
   analisisDirectos AnalisisCvDirecto[]
   habilidades      CandidatoHabilidad[]
   usuario          User                 @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
@@ -55,6 +56,7 @@ model Candidato {
   experiencia      ExperienciaLaboral[]
   idiomas          Idioma[]
   postulaciones    Postulacion[]
+  favoritos        VacanteFavorita[]
 
   @@map("candidatos")
 }
@@ -111,25 +113,37 @@ model AnalisisCvPostulacion {
 }
 
 model OfertaLaboral {
-  id                String        @id @default(uuid())
-  empresaId         String        @map("empresa_id")
+  id                String            @id @default(uuid())
+  empresaId         String            @map("empresa_id")
   titulo            String
   descripcion       String
-  estado            String        @default("borrador")
+  estado            String            @default("borrador")
   categoria         String?
   modalidad         String?
-  experienciaMinima Int           @default(0) @map("experiencia_minima")
-  salarioMin        Int?          @map("salario_min")
-  salarioMax        Int?          @map("salario_max")
+  experienciaMinima Int               @default(0) @map("experiencia_minima")
+  salarioMin        Int?              @map("salario_min")
+  salarioMax        Int?              @map("salario_max")
   ubicacion         String?
   requisitos        Json?
-  matchingWeights   Json?         @map("matching_weights")
-  creadaEl          DateTime      @default(now()) @map("creada_el")
-  actualizadoEl     DateTime      @default(now()) @updatedAt @map("actualizado_el")
-  empresa           Empresa       @relation(fields: [empresaId], references: [usuarioId], onDelete: Cascade)
+  matchingWeights   Json?             @map("matching_weights")
+  creadaEl          DateTime          @default(now()) @map("creada_el")
+  actualizadoEl     DateTime          @default(now()) @updatedAt @map("actualizado_el")
+  empresa           Empresa           @relation(fields: [empresaId], references: [usuarioId], onDelete: Cascade)
   postulaciones     Postulacion[]
+  favoritos         VacanteFavorita[]
 
   @@map("ofertas_laborales")
+}
+
+model VacanteFavorita {
+  candidatoId String        @map("candidato_id")
+  ofertaId    String        @map("oferta_id")
+  guardadoEl  DateTime      @default(now()) @map("guardado_el")
+  candidato   Candidato     @relation(fields: [candidatoId], references: [usuarioId], onDelete: Cascade)
+  oferta      OfertaLaboral @relation(fields: [ofertaId], references: [id], onDelete: Cascade)
+
+  @@id([candidatoId, ofertaId])
+  @@map("vacantes_favoritas")
 }
 
 model Postulacion {

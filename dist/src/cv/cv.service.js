@@ -65,7 +65,7 @@ function parseScore(raw) {
 let CvService = class CvService {
     // GET /api/cv/analisis — devuelve análisis + datos redistribuidos de la BD
     async getAnalisis(candidatoId) {
-        const [analisis, experienciaLaboral, todasHabilidades] = await Promise.all([
+        const [analisis, experienciaLaboral, todasHabilidades, candidato] = await Promise.all([
             this.prisma.analisisCvDirecto.findFirst({
                 where: {
                     candidatoId
@@ -109,6 +109,14 @@ let CvService = class CvService {
                 orderBy: {
                     aniosExp: 'desc'
                 }
+            }),
+            this.prisma.candidato.findUnique({
+                where: {
+                    usuarioId: candidatoId
+                },
+                select: {
+                    urlCv: true
+                }
             })
         ]);
         if (!analisis) return null;
@@ -124,7 +132,8 @@ let CvService = class CvService {
             ...analisisLimpio,
             experienciaLaboral,
             habilidades,
-            tecnologias
+            tecnologias,
+            urlArchivo: candidato?.urlCv ?? null
         };
     }
     // Llamado desde el callback de Make.com con el análisis procesado.

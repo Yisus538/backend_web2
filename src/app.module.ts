@@ -15,6 +15,7 @@ import { CloudinaryModule } from './cloudinary/cloudinary.module';
 import { NavigationModule } from './navigation/navigation.module';
 import { CurriculumModule } from './curriculum/curriculum.module';
 import { EntrevistasModule } from './entrevistas/entrevistas.module';
+import { FavoritosModule } from './favoritos/favoritos.module';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { EntrevistasModule } from './entrevistas/entrevistas.module';
     HealthModule,
     AdminModule,
     EntrevistasModule,
+    FavoritosModule,
   ],
 })
 export class AppModule {}

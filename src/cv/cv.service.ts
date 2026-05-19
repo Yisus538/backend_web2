@@ -48,7 +48,7 @@ export class CvService {
 
   // GET /api/cv/analisis — devuelve análisis + datos redistribuidos de la BD
   async getAnalisis(candidatoId: string) {
-    const [analisis, experienciaLaboral, todasHabilidades] = await Promise.all([
+    const [analisis, experienciaLaboral, todasHabilidades, candidato] = await Promise.all([
       this.prisma.analisisCvDirecto.findFirst({
         where:   { candidatoId },
         orderBy: { analizadoEl: 'desc' },
@@ -77,6 +77,10 @@ export class CvService {
         },
         orderBy: { aniosExp: 'desc' },
       }),
+      this.prisma.candidato.findUnique({
+        where:  { usuarioId: candidatoId },
+        select: { urlCv: true },
+      }),
     ]);
 
     if (!analisis) return null;
@@ -92,7 +96,13 @@ export class CvService {
     // Exponer solo columnas escalares del análisis (sin los JSON blobs)
     const { cvCompleto: _, evaluacionCompleta: __, ...analisisLimpio } = analisis as any;
 
-    return { ...analisisLimpio, experienciaLaboral, habilidades, tecnologias };
+    return {
+      ...analisisLimpio,
+      experienciaLaboral,
+      habilidades,
+      tecnologias,
+      urlArchivo: candidato?.urlCv ?? null,
+    };
   }
 
   // Llamado desde el callback de Make.com con el análisis procesado.

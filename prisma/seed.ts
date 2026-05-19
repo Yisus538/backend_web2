@@ -120,6 +120,16 @@ async function main() {
       activo: true,
     },
     {
+      itemKey: 'candidato_favoritos',
+      icon: 'bookmarks',
+      label: 'Favoritos',
+      hashPath: '#/candidato-favoritos',
+      activeKeyword: 'candidato-favoritos',   // router: CANDIDATO_FAVORITOS → "candidato-favoritos"
+      esItemConfig: false,
+      esFallback: false,
+      activo: true,
+    },
+    {
       itemKey: 'config_candidato',
       icon: 'settings',
       label: 'Configuración',
@@ -192,8 +202,9 @@ async function main() {
     ['candidato_dashboard', 1, 99],   // fallback → prioridad baja
     ['candidato_perfil', 2, 10],
     ['candidato_candidaturas', 3, 20],
-    ['candidato_vacantes', 4, 15],   // "candidato-vacantes" matchea antes que candidaturas
-    ['config_candidato', 5, 50],
+    ['candidato_vacantes', 4, 15],    // "candidato-vacantes" matchea antes que candidaturas
+    ['candidato_favoritos', 5, 25],
+    ['config_candidato', 6, 50],
   ];
 
   // El admin ve lo mismo que empresa (ajustar si se necesita)
