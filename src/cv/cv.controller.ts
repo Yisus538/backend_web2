@@ -220,15 +220,17 @@ export class CvController {
     file: Express.Multer.File,
     candidatoId: string,
   ): Promise<string | null> {
+    if (file.mimetype !== 'application/pdf') return null;
     try {
       const { secureUrl } = await this.cloudinaryService.uploadCv(
         file.buffer,
         candidatoId,
         file.originalname,
       );
-      await this.prisma.candidato.update({
+      await this.prisma.candidato.upsert({
         where:  { usuarioId: candidatoId },
-        data:   { urlCv: secureUrl },
+        create: { usuarioId: candidatoId, urlCv: secureUrl },
+        update: { urlCv: secureUrl },
       });
       this.logger.log(`[analyze] CV subido a Cloudinary: ${secureUrl}`);
       return secureUrl;

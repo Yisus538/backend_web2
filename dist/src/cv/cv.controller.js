@@ -169,13 +169,18 @@ let CvController = class CvController {
     // Sube el CV a Cloudinary y persiste la URL en el registro de Candidato.
     // Retorna la secureUrl, o null si falla (el análisis IA sigue igual).
     async uploadCvToCloudinary(file, candidatoId) {
+        if (file.mimetype !== 'application/pdf') return null;
         try {
             const { secureUrl } = await this.cloudinaryService.uploadCv(file.buffer, candidatoId, file.originalname);
-            await this.prisma.candidato.update({
+            await this.prisma.candidato.upsert({
                 where: {
                     usuarioId: candidatoId
                 },
-                data: {
+                create: {
+                    usuarioId: candidatoId,
+                    urlCv: secureUrl
+                },
+                update: {
                     urlCv: secureUrl
                 }
             });

@@ -17,7 +17,7 @@ export class CloudinaryService {
       const sanitizedName = originalName
         .replace(/\.[^/.]+$/, '')
         .replace(/[^a-zA-Z0-9_-]/g, '_');
-      const publicId = `cvs/cv-${userId}-${sanitizedName}`;
+      const publicId = `cv-${userId}-${sanitizedName}`;
 
       this.cloudinary.uploader
         .upload_stream(
