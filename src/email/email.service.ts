@@ -27,10 +27,16 @@ export class EmailService {
     const body = await res.json().catch(() => ({}));
 
     if (!res.ok) {
-      if (res.status === 403 || (body as any)?.name === 'validation_error') {
+      this.logger.error(
+        `❌ Resend error ${res.status} | to: ${to} | from: ${from} | ` +
+        `name: ${(body as any)?.name} | message: ${(body as any)?.message}`,
+      );
+      if (res.status === 403 || res.status === 422 || (body as any)?.name === 'validation_error') {
         this.logger.error(
-          '⚠️  Dominio de remitente no verificado en Resend. ' +
-          'Verificá en https://resend.com/domains o usá onboarding@resend.dev',
+          '⚠️  Causa probable: el dominio remitente no está verificado en Resend. ' +
+          'onboarding@resend.dev solo envía al email dueño de la cuenta. ' +
+          'Solución: verificar dominio propio en https://resend.com/domains y ' +
+          'actualizar RESEND_FROM en Railway.',
         );
       }
       throw new Error((body as any).message || `Error Resend (${res.status})`);
@@ -41,7 +47,7 @@ export class EmailService {
 
   // ─── Verificación de cuenta ─────────────────────────────────
   async sendVerificationEmail(email: string, fullName: string, token: string): Promise<void> {
-    const verifyUrl = `${FRONTEND_URL}/index.html#/verify-email?token=${token}`;
+    const verifyUrl = `${FRONTEND_URL}/#/verify-email?token=${token}`;
     await this.send(
       email,
       'Verificá tu cuenta — ReclutaIA',
@@ -65,7 +71,7 @@ export class EmailService {
 
   // ─── Reseteo de contraseña ───────────────────────────────────
   async sendPasswordResetEmail(email: string, resetToken: string): Promise<void> {
-    const resetUrl  = `${FRONTEND_URL}/index.html#/reset-password?token=${resetToken}`;
+    const resetUrl  = `${FRONTEND_URL}/#/reset-password?token=${resetToken}`;
     const expiryMin = process.env.RESET_TOKEN_EXPIRES_MINUTES || '60';
     await this.send(
       email,
