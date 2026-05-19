@@ -1,0 +1,29 @@
+BCRYPT_ROUNDS=12
+CLOUDINARY_API_KEY=152918224928627
+CLOUDINARY_API_SECRET=1gos9pibDQWOVRnp3Mv--ETNukc
+CLOUDINARY_CLOUD_NAME=dcwl2wjiq
+
+DATABASE_URL="postgresql://postgres:DRSZyQVcczxsoZqNhrNzWlkkfUUzHVbW@maglev.proxy.rlwy.net:33596/railway"
+
+FRONTEND_URL=http://localhost:5173
+JWT_SECRET=9fcb5bb071b96baf40ed9374781361a3b2730cd658113c10c0678d6879be823a90b7405e74d596f739036e2e79ec9428
+JWT_EXPIRES_IN=1h
+JWT_REFRESH_EXPIRES_IN=7d
+JWT_REFRESH_SECRET=f63fcb1e2f066585e37193d52ab270f8d13872e34afd74c52776379766985e8e3f39440e94269187297a13e066473fb7
+RESET_TOKEN_EXPIRES_MINUTES=60
+
+RESEND_FROM=ReclutaIA <onboarding@resend.dev>
+RESEND_API_KEY=re_a5ih6LH5_5TW8ZLDdrF4Z5JuXr9cGRYNf
+
+# Make.com — flujo subir CV (perfil)
+MAKE_CV_WEBHOOK_URL=https://hook.us2.make.com/ko11nrb4dh4ldhqu2h5obb0ggdinoudj 
+MAKE_API_KEY=123456
+
+# Make.com — flujo postulación (análisis de aptitud)
+MAKE_POSTULACION_WEBHOOK_URL=https://hook.us2.make.com/egn1ou6hhb7mnyh3647eqy4ff487okp8
+
+# Seguridad callbacks Make → Backend
+WEBHOOK_SECRET=reclutaia-make-2024
+
+# URL pública del backend (para que Make sepa a dónde llamar de vuelta)
+API_BASE_URL=https://TU-BACKEND.railway.app 
