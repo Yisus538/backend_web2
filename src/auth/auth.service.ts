@@ -78,6 +78,7 @@ export class AuthService {
       isEmailVerified: user.isEmailVerified,
       createdAt:       user.createdAt,
       avatarUrl:       user.avatarUrl ?? null,
+      theme:           user.theme ?? 'auto',
     };
   }
 
@@ -221,7 +222,7 @@ export class AuthService {
       select: {
         id: true, fullName: true, email: true, role: true,
         avatarUrl: true, telefono: true, ubicacion: true, titulo: true,
-        isEmailVerified: true,
+        isEmailVerified: true, theme: true,
         candidato: {
           select: {
             biografia: true,
@@ -281,7 +282,7 @@ export class AuthService {
   }
 
   async updateMe(userId: string, dto: UpdateProfileDto) {
-    const { fullName, telefono, ubicacion, titulo, avatarUrl } = dto;
+    const { fullName, telefono, ubicacion, titulo, avatarUrl, theme } = dto;
 
     if (avatarUrl !== undefined && avatarUrl !== null && avatarUrl !== '') {
       try { new URL(avatarUrl); } catch {
@@ -297,10 +298,11 @@ export class AuthService {
         ...(ubicacion !== undefined ? { ubicacion } : {}),
         ...(titulo    !== undefined ? { titulo }    : {}),
         ...(avatarUrl !== undefined ? { avatarUrl: avatarUrl || null } : {}),
+        ...(theme     !== undefined ? { theme }     : {}),
       },
       select: {
         id: true, fullName: true, email: true, role: true,
-        avatarUrl: true, telefono: true, ubicacion: true, titulo: true,
+        avatarUrl: true, telefono: true, ubicacion: true, titulo: true, theme: true,
       },
     });
     return updated;

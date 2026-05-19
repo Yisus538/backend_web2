@@ -1,4 +1,4 @@
-import { IsOptional, IsString } from 'class-validator';
+import { IsOptional, IsString, IsIn } from 'class-validator';
 
 export class UpdateProfileDto {
   @IsOptional() @IsString() fullName?: string;
@@ -6,4 +6,5 @@ export class UpdateProfileDto {
   @IsOptional() @IsString() ubicacion?: string;
   @IsOptional() @IsString() titulo?: string;
   @IsOptional() avatarUrl?: string | null;
+  @IsOptional() @IsIn(['dark', 'light', 'auto']) theme?: string;
 }

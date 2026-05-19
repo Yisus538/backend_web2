@@ -26,6 +26,7 @@ model User {
   telefono                   String?
   ubicacion                  String?
   titulo                     String?
+  theme                      String          @default("auto")
   createdAt                  DateTime        @default(now())
   updatedAt                  DateTime        @updatedAt
   administrativo             Administrativo?

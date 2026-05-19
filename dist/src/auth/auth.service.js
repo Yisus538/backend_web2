@@ -97,7 +97,8 @@ let AuthService = class AuthService {
             role: user.role,
             isEmailVerified: user.isEmailVerified,
             createdAt: user.createdAt,
-            avatarUrl: user.avatarUrl ?? null
+            avatarUrl: user.avatarUrl ?? null,
+            theme: user.theme ?? 'auto'
         };
     }
     // ────────────────────────────────────────────────────────────
@@ -271,6 +272,7 @@ let AuthService = class AuthService {
                 ubicacion: true,
                 titulo: true,
                 isEmailVerified: true,
+                theme: true,
                 candidato: {
                     select: {
                         biografia: true,
@@ -359,7 +361,7 @@ let AuthService = class AuthService {
         });
     }
     async updateMe(userId, dto) {
-        const { fullName, telefono, ubicacion, titulo, avatarUrl } = dto;
+        const { fullName, telefono, ubicacion, titulo, avatarUrl, theme } = dto;
         if (avatarUrl !== undefined && avatarUrl !== null && avatarUrl !== '') {
             try {
                 new URL(avatarUrl);
@@ -386,6 +388,9 @@ let AuthService = class AuthService {
                 } : {},
                 ...avatarUrl !== undefined ? {
                     avatarUrl: avatarUrl || null
+                } : {},
+                ...theme !== undefined ? {
+                    theme
                 } : {}
             },
             select: {
@@ -396,7 +401,8 @@ let AuthService = class AuthService {
                 avatarUrl: true,
                 telefono: true,
                 ubicacion: true,
-                titulo: true
+                titulo: true,
+                theme: true
             }
         });
         return updated;

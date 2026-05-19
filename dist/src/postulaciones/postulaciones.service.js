@@ -270,7 +270,7 @@ let PostulacionesService = class PostulacionesService {
                 }))
         };
         // Fire-and-forget a Make.com — cvUrl garantizado
-        this.enviarAMake(postulacion.id, cvUrl, oferta, candidatoData).catch((err)=>console.error('[postulacion/crear] make error:', err));
+        this.enviarAMake(postulacion.id, userId, cvUrl, oferta, candidatoData).catch((err)=>this.logger.error(`[enviarAMake] ${err.message}`, err.stack));
         return postulacion;
     }
     // ────────────────────────────────────────────────────────────
@@ -571,14 +571,16 @@ let PostulacionesService = class PostulacionesService {
     // ────────────────────────────────────────────────────────────
     // Privados
     // ────────────────────────────────────────────────────────────
-    async enviarAMake(postulacionId, cvUrl, oferta, candidatoData) {
+    async enviarAMake(postulacionId, candidatoId, cvUrl, oferta, candidatoData) {
         const webhookUrl = process.env.MAKE_POSTULACION_WEBHOOK_URL;
         if (!webhookUrl) {
-            console.warn('[make] MAKE_POSTULACION_WEBHOOK_URL no configurada — saltando análisis IA');
+            this.logger.warn('[enviarAMake] MAKE_POSTULACION_WEBHOOK_URL no configurada — saltando análisis IA');
             return;
         }
+        this.logger.log(`[enviarAMake] Enviando postulación ${postulacionId} a Make.com`);
         const payload = {
             postulacionId,
+            candidatoId,
             cvUrl,
             candidato: candidatoData,
             vacante: {
@@ -593,13 +595,19 @@ let PostulacionesService = class PostulacionesService {
             callbackUrl: `${process.env.API_BASE_URL}/api/postulaciones/callback`,
             webhookSecret: process.env.WEBHOOK_SECRET
         };
-        await fetch(webhookUrl, {
+        const response = await fetch(webhookUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(payload),
+            signal: AbortSignal.timeout(15_000)
         });
+        this.logger.log(`[enviarAMake] Respuesta de Make: ${response.status}`);
+        if (!response.ok) {
+            const text = await response.text();
+            this.logger.error(`[enviarAMake] Error de Make (${response.status}): ${text}`);
+        }
     }
     sumarDiasHabiles(fecha, dias) {
         const resultado = new Date(fecha);
@@ -616,6 +624,7 @@ let PostulacionesService = class PostulacionesService {
     constructor(prisma, email){
         this.prisma = prisma;
         this.email = email;
+        this.logger = new _common.Logger(PostulacionesService.name);
     }
 };
 PostulacionesService = _ts_decorate([

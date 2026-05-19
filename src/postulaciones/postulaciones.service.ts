@@ -3,6 +3,7 @@ import {
   ConflictException,
   NotFoundException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
@@ -20,6 +21,8 @@ const STATUS_META: Record<string, any> = {
 
 @Injectable()
 export class PostulacionesService {
+  private readonly logger = new Logger(PostulacionesService.name);
+
   constructor(
     private prisma: PrismaService,
     private email: EmailService,
@@ -182,8 +185,8 @@ export class PostulacionesService {
     };
 
     // Fire-and-forget a Make.com — cvUrl garantizado
-    this.enviarAMake(postulacion.id, cvUrl, oferta, candidatoData).catch(err =>
-      console.error('[postulacion/crear] make error:', err),
+    this.enviarAMake(postulacion.id, userId, cvUrl, oferta, candidatoData).catch(err =>
+      this.logger.error(`[enviarAMake] ${err.message}`, err.stack),
     );
 
     return postulacion;
@@ -458,6 +461,7 @@ export class PostulacionesService {
   // ────────────────────────────────────────────────────────────
   private async enviarAMake(
     postulacionId: string,
+    candidatoId: string,
     cvUrl: string,
     oferta: {
       titulo: string;
@@ -478,12 +482,15 @@ export class PostulacionesService {
   ): Promise<void> {
     const webhookUrl = process.env.MAKE_POSTULACION_WEBHOOK_URL;
     if (!webhookUrl) {
-      console.warn('[make] MAKE_POSTULACION_WEBHOOK_URL no configurada — saltando análisis IA');
+      this.logger.warn('[enviarAMake] MAKE_POSTULACION_WEBHOOK_URL no configurada — saltando análisis IA');
       return;
     }
 
+    this.logger.log(`[enviarAMake] Enviando postulación ${postulacionId} a Make.com`);
+
     const payload = {
       postulacionId,
+      candidatoId,
       cvUrl,
       candidato: candidatoData,
       vacante: {
@@ -499,11 +506,19 @@ export class PostulacionesService {
       webhookSecret: process.env.WEBHOOK_SECRET,
     };
 
-    await fetch(webhookUrl, {
+    const response = await fetch(webhookUrl, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify(payload),
+      signal:  AbortSignal.timeout(15_000),
     });
+
+    this.logger.log(`[enviarAMake] Respuesta de Make: ${response.status}`);
+
+    if (!response.ok) {
+      const text = await response.text();
+      this.logger.error(`[enviarAMake] Error de Make (${response.status}): ${text}`);
+    }
   }
 
   private sumarDiasHabiles(fecha: Date, dias: number): Date {

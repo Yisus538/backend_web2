@@ -44,5 +44,14 @@ _ts_decorate([
     (0, _classvalidator.IsOptional)(),
     _ts_metadata("design:type", Object)
 ], UpdateProfileDto.prototype, "avatarUrl", void 0);
+_ts_decorate([
+    (0, _classvalidator.IsOptional)(),
+    (0, _classvalidator.IsIn)([
+        'dark',
+        'light',
+        'auto'
+    ]),
+    _ts_metadata("design:type", String)
+], UpdateProfileDto.prototype, "theme", void 0);
 
 //# sourceMappingURL=update-profile.dto.js.map
