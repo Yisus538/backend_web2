@@ -34,6 +34,16 @@ export class VacantesController {
   }
 
   // ────────────────────────────────────────────────────────────
+  // GET /api/vacantes/habilidades-demandadas  — candidatos
+  // ────────────────────────────────────────────────────────────
+  @Get('habilidades-demandadas')
+  @Roles('candidate')
+  async habilidadesDemandadas() {
+    const data = await this.svc.habilidadesDemandadas();
+    return { ok: true, message: 'Habilidades demandadas obtenidas', data };
+  }
+
+  // ────────────────────────────────────────────────────────────
   // GET /api/vacantes/publicas/:id  — candidatos: detalle      🆕
   // ────────────────────────────────────────────────────────────
   @Get('publicas/:id')

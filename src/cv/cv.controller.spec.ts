@@ -2,6 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { CvController } from './cv.controller';
 import { CvService } from './cv.service';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { JwtPayload } from '../common/decorators/current-user.decorator';
 
 describe('CvController', () => {
@@ -30,7 +32,11 @@ describe('CvController', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [CvController],
-      providers: [{ provide: CvService, useValue: mockCvService }],
+      providers: [
+        { provide: CvService,        useValue: mockCvService },
+        { provide: CloudinaryService, useValue: { uploadFile: jest.fn() } },
+        { provide: PrismaService,     useValue: {} },
+      ],
     }).compile();
 
     controller = module.get<CvController>(CvController);
@@ -52,7 +58,8 @@ describe('CvController', () => {
   describe('analyze()', () => {
     it('debe retornar ok:true cuando recibe archivo y usuario válidos', async () => {
       const result = await controller.analyze(mockFile, mockUser);
-      expect(result).toEqual({ ok: true, message: 'CV recibido, procesando...' });
+      expect(result.ok).toBe(true);
+      expect(result.message).toBe('CV recibido, procesando...');
     });
 
     it('debe llamar sendToMake en fire-and-forget con el archivo y userId', async () => {

@@ -6,6 +6,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { CvController } from './cv.controller';
 import { CvService } from './cv.service';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { JwtPayload } from '../common/decorators/current-user.decorator';
 
 describe('CV Flow — Integración', () => {
@@ -37,6 +39,8 @@ describe('CV Flow — Integración', () => {
             procesarAnalisis: jest.fn().mockResolvedValue(undefined),
           },
         },
+        { provide: CloudinaryService, useValue: { uploadFile: jest.fn() } },
+        { provide: PrismaService,     useValue: {} },
       ],
     }).compile();
 

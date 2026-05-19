@@ -459,6 +459,55 @@ let VacantesService = class VacantesService {
         };
     }
     // ────────────────────────────────────────────────────────────
+    // GET /api/vacantes/habilidades-demandadas  — candidatos
+    // Agrega las habilidades seleccionadas de todas las vacantes
+    // abiertas y devuelve el top 15 ordenado por frecuencia.
+    // ────────────────────────────────────────────────────────────
+    async habilidadesDemandadas() {
+        const vacantes = await this.prisma.ofertaLaboral.findMany({
+            where: {
+                estado: 'abierta'
+            },
+            select: {
+                id: true,
+                requisitos: true
+            }
+        });
+        const countMap = new Map();
+        const labelMap = new Map(); // key normalizada → label original
+        let vacantesConRequisitos = 0;
+        for (const v of vacantes){
+            const req = v.requisitos ?? {};
+            const tech = req.techSkills ?? [];
+            const soft = req.softSkills ?? [];
+            const selected = [
+                ...tech,
+                ...soft
+            ].filter((s)=>s.selected === true);
+            if (selected.length > 0) vacantesConRequisitos++;
+            for (const s of selected){
+                const raw = String(s.label ?? '').trim();
+                if (!raw) continue;
+                const key = raw.toLowerCase();
+                countMap.set(key, (countMap.get(key) ?? 0) + 1);
+                if (!labelMap.has(key)) labelMap.set(key, raw);
+            }
+        }
+        const sorted = [
+            ...countMap.entries()
+        ].sort((a, b)=>b[1] - a[1]).slice(0, 15);
+        const base = vacantesConRequisitos || 1;
+        const habilidades = sorted.map(([key, count])=>({
+                nombre: labelMap.get(key),
+                count,
+                porcentaje: Math.round(count / base * 100)
+            }));
+        return {
+            habilidades,
+            totalVacantes: vacantes.length
+        };
+    }
+    // ────────────────────────────────────────────────────────────
     // GET /api/vacantes/publicas/:id  — candidato: detalle        🆕
     // Devuelve info completa de una vacante abierta, incluyendo
     // requisitos formateados y si el candidato ya aplicó.

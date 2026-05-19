@@ -6,6 +6,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { CvController } from './cv.controller';
 import { CvService } from './cv.service';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { JwtPayload } from '../common/decorators/current-user.decorator';
 
 describe('CvController — getAnalisisActivo()', () => {
@@ -39,7 +41,11 @@ describe('CvController — getAnalisisActivo()', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [CvController],
-      providers:   [{ provide: CvService, useValue: cvService }],
+      providers: [
+        { provide: CvService,         useValue: cvService },
+        { provide: CloudinaryService, useValue: { uploadFile: jest.fn() } },
+        { provide: PrismaService,     useValue: {} },
+      ],
     }).compile();
 
     controller = module.get<CvController>(CvController);

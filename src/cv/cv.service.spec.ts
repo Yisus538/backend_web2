@@ -12,6 +12,7 @@ describe('CvService', () => {
     },
     candidato: {
       upsert: jest.fn(),
+      findUnique: jest.fn(),
     },
     habilidad: {
       upsert: jest.fn(),

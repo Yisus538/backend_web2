@@ -44,6 +44,17 @@ let VacantesController = class VacantesController {
         };
     }
     // ────────────────────────────────────────────────────────────
+    // GET /api/vacantes/habilidades-demandadas  — candidatos
+    // ────────────────────────────────────────────────────────────
+    async habilidadesDemandadas() {
+        const data = await this.svc.habilidadesDemandadas();
+        return {
+            ok: true,
+            message: 'Habilidades demandadas obtenidas',
+            data
+        };
+    }
+    // ────────────────────────────────────────────────────────────
     // GET /api/vacantes/publicas/:id  — candidatos: detalle      🆕
     // ────────────────────────────────────────────────────────────
     async publicaById(u, id) {
@@ -172,6 +183,13 @@ _ts_decorate([
     ]),
     _ts_metadata("design:returntype", Promise)
 ], VacantesController.prototype, "publicas", null);
+_ts_decorate([
+    (0, _common.Get)('habilidades-demandadas'),
+    (0, _rolesdecorator.Roles)('candidate'),
+    _ts_metadata("design:type", Function),
+    _ts_metadata("design:paramtypes", []),
+    _ts_metadata("design:returntype", Promise)
+], VacantesController.prototype, "habilidadesDemandadas", null);
 _ts_decorate([
     (0, _common.Get)('publicas/:id'),
     (0, _rolesdecorator.Roles)('candidate'),
