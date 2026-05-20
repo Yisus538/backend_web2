@@ -31,6 +31,7 @@ const mockPrisma = {
   },
   mensaje: {
     findMany:    jest.fn(),
+    findFirst:   jest.fn(),
     create:      jest.fn(),
     updateMany:  jest.fn(),
     count:       jest.fn(),
@@ -209,34 +210,69 @@ describe('MensajesService', () => {
 
   // ── crearConversacion() ───────────────────────────────────────────
   describe('crearConversacion()', () => {
-    const mockPost = {
+    const mockPostCompleto = {
       id: 'post-1',
       candidatoId: 'candidato-1',
-      oferta: { empresaId: 'empresa-1' },
+      oferta: {
+        id: 'oferta-1',
+        titulo: 'Dev Frontend',
+        empresaId: 'empresa-1',
+        empresa: {
+          usuarioId: 'empresa-1',
+          nombreEmpresa: 'TechCorp',
+          usuario: { id: 'empresa-1', fullName: 'TechCorp SA' },
+        },
+      },
+      candidato: { usuario: { id: 'candidato-1', fullName: 'Juan García' } },
     };
 
-    it('retorna id de conversación existente si ya existe', async () => {
-      mockPrisma.postulacion.findUnique.mockResolvedValue(mockPost);
+    beforeEach(() => {
+      mockPrisma.mensaje.count.mockResolvedValue(0);
+      mockPrisma.mensaje.findFirst.mockResolvedValue(null);
+    });
+
+    it('devuelve la conversación existente con shape completo', async () => {
+      mockPrisma.postulacion.findUnique.mockResolvedValue(mockPostCompleto);
       mockPrisma.conversacion.findUnique.mockResolvedValue({ id: 'conv-exist' });
 
       const result = await service.crearConversacion('candidato-1', 'candidate', { postulacionId: 'post-1' });
 
-      expect(result).toEqual({ id: 'conv-exist' });
+      expect(result.id).toBe('conv-exist');
+      expect(result.participante.nombre).toBe('TechCorp');
+      expect(result.vacanteTitulo).toBe('Dev Frontend');
+      expect(result.noLeidos).toBe(0);
       expect(mockPrisma.conversacion.create).not.toHaveBeenCalled();
     });
 
-    it('crea nueva conversación si no existe', async () => {
-      mockPrisma.postulacion.findUnique.mockResolvedValue(mockPost);
+    it('crea nueva conversación y devuelve shape completo', async () => {
+      mockPrisma.postulacion.findUnique.mockResolvedValue(mockPostCompleto);
       mockPrisma.conversacion.findUnique.mockResolvedValue(null);
       mockPrisma.conversacion.create.mockResolvedValue({ id: 'conv-nueva' });
 
       const result = await service.crearConversacion('empresa-1', 'company', { postulacionId: 'post-1' });
 
-      expect(result).toEqual({ id: 'conv-nueva' });
+      expect(result.id).toBe('conv-nueva');
+      expect(result.participante.nombre).toBe('Juan García');
+      expect(result.vacanteId).toBe('oferta-1');
       expect(mockPrisma.conversacion.create).toHaveBeenCalledWith({
         data: { postulacionId: 'post-1' },
         select: { id: true },
       });
+    });
+
+    it('devuelve noLeidos correcto cuando hay mensajes sin leer', async () => {
+      mockPrisma.postulacion.findUnique.mockResolvedValue(mockPostCompleto);
+      mockPrisma.conversacion.findUnique.mockResolvedValue({ id: 'conv-exist' });
+      mockPrisma.mensaje.count.mockResolvedValue(3);
+      mockPrisma.mensaje.findFirst.mockResolvedValue({
+        texto: 'Último mensaje',
+        creadoEn: new Date('2026-05-01T10:00:00Z'),
+      });
+
+      const result = await service.crearConversacion('empresa-1', 'company', { postulacionId: 'post-1' });
+
+      expect(result.noLeidos).toBe(3);
+      expect(result.ultimoMensaje).toBe('Último mensaje');
     });
 
     it('lanza NotFoundException si la postulación no existe', async () => {
@@ -248,7 +284,7 @@ describe('MensajesService', () => {
     });
 
     it('lanza ForbiddenException si el usuario no es participante', async () => {
-      mockPrisma.postulacion.findUnique.mockResolvedValue(mockPost);
+      mockPrisma.postulacion.findUnique.mockResolvedValue(mockPostCompleto);
 
       await expect(
         service.crearConversacion('intruso', 'candidate', { postulacionId: 'post-1' }),

@@ -179,7 +179,21 @@ export class MensajesService {
 
     const postulacion = await this.prisma.postulacion.findUnique({
       where: { id: postulacionId },
-      include: { oferta: { select: { empresaId: true } } },
+      include: {
+        oferta: {
+          select: {
+            id: true,
+            titulo: true,
+            empresaId: true,
+            empresa: {
+              include: { usuario: { select: { id: true, fullName: true } } },
+            },
+          },
+        },
+        candidato: {
+          include: { usuario: { select: { id: true, fullName: true } } },
+        },
+      },
     });
 
     if (!postulacion) throw new NotFoundException('Postulación no encontrada');
@@ -193,15 +207,43 @@ export class MensajesService {
 
     const existente = await this.prisma.conversacion.findUnique({
       where: { postulacionId },
-    });
-    if (existente) return { id: existente.id };
-
-    const nueva = await this.prisma.conversacion.create({
-      data: { postulacionId },
       select: { id: true },
     });
 
-    return { id: nueva.id };
+    const convId = existente
+      ? existente.id
+      : (await this.prisma.conversacion.create({ data: { postulacionId }, select: { id: true } })).id;
+
+    const [noLeidos, lastMsg] = await Promise.all([
+      this.prisma.mensaje.count({
+        where: { conversacionId: convId, autorId: { not: userId }, leido: false },
+      }),
+      this.prisma.mensaje.findFirst({
+        where: { conversacionId: convId },
+        orderBy: { creadoEn: 'desc' },
+        select: { texto: true, creadoEn: true },
+      }),
+    ]);
+
+    let participante: { id: string; nombre: string; iniciales: string };
+    if (role === 'company') {
+      const u = postulacion.candidato.usuario;
+      participante = { id: u.id, nombre: u.fullName, iniciales: iniciales(u.fullName) };
+    } else {
+      const emp = postulacion.oferta.empresa;
+      const nombre = emp.nombreEmpresa ?? emp.usuario.fullName;
+      participante = { id: emp.usuarioId, nombre, iniciales: iniciales(nombre) };
+    }
+
+    return {
+      id: convId,
+      participante,
+      vacanteId:     postulacion.oferta.id,
+      vacanteTitulo: postulacion.oferta.titulo,
+      ultimoMensaje: lastMsg?.texto ?? '',
+      ultimaFecha:   (lastMsg?.creadoEn ?? new Date()).toISOString(),
+      noLeidos,
+    };
   }
 
   // ── Privado ───────────────────────────────────────────────────────
