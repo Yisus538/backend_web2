@@ -28,7 +28,7 @@ export class UploadController {
     if (!file) throw new BadRequestException('No se envió imagen');
     try {
       const { url } = await this.cloudinaryService.uploadAvatar(file.buffer, user.userId);
-      return { success: true, data: { url }, message: 'Avatar subido correctamente' };
+      return { ok: true, message: 'Avatar subido correctamente', data: { url } };
     } catch (error) {
       console.error('[upload-avatar] Error procesando imagen:', error);
       throw new InternalServerErrorException('Error en el servidor al procesar la imagen');

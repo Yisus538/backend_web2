@@ -1,6 +1,6 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { UploadApiResponse, v2 as CloudinaryType } from 'cloudinary';
-import * as sharp from 'sharp';
+import sharp = require('sharp');
 
 @Injectable()
 export class CloudinaryService {

@@ -48,22 +48,13 @@ const jwtRefExp    = () => process.env.JWT_REFRESH_EXPIRES_IN || '7d';
 
 @Injectable()
 export class AuthService {
-  private resendCooldown = new Map<string, number>();
   private readonly COOLDOWN_MS = 2 * 60 * 1000; // 2 min
 
   constructor(
     private prisma:     PrismaService,
     private email:      EmailService,
     private navService: NavService,
-  ) {
-    // Purge expired cooldown entries every 10 minutes to avoid indefinite growth
-    setInterval(() => {
-      const now = Date.now();
-      for (const [key, ts] of this.resendCooldown) {
-        if (now - ts > this.COOLDOWN_MS) this.resendCooldown.delete(key);
-      }
-    }, 10 * 60 * 1000).unref();
-  }
+  ) {}
 
   // ────────────────────────────────────────────────────────────
   // Helpers privados
@@ -434,11 +425,10 @@ export class AuthService {
       return 'Tu cuenta ya está verificada. Podés iniciar sesión.';
     }
 
-    // Cooldown de 2 minutos por usuario
-    const lastSent = this.resendCooldown.get(user.id);
-    const now      = Date.now();
-    if (lastSent && now - lastSent < this.COOLDOWN_MS) {
-      const secs = Math.ceil((this.COOLDOWN_MS - (now - lastSent)) / 1000);
+    // Cooldown de 2 minutos por usuario (persistido en DB)
+    const now = new Date();
+    if (user.resendCooldownUntil && user.resendCooldownUntil > now) {
+      const secs = Math.ceil((user.resendCooldownUntil.getTime() - now.getTime()) / 1000);
       throw new HttpException(
         { ok: false, message: `Esperá ${secs} segundos antes de reenviar.` },
         HttpStatus.TOO_MANY_REQUESTS,
@@ -451,7 +441,11 @@ export class AuthService {
 
     await this.prisma.user.update({
       where: { id: user.id },
-      data:  { verificationTokenHash: tokenHash, verificationTokenExpiresAt: expiresAt },
+      data:  {
+        verificationTokenHash:      tokenHash,
+        verificationTokenExpiresAt: expiresAt,
+        resendCooldownUntil:        new Date(now.getTime() + this.COOLDOWN_MS),
+      },
     });
 
     try {
@@ -460,7 +454,6 @@ export class AuthService {
       throw new BadRequestException('Error al enviar el correo. Intentá de nuevo en unos minutos.');
     }
 
-    this.resendCooldown.set(user.id, now);
     return 'Enlace de verificación reenviado. Revisá tu correo.';
   }
 }

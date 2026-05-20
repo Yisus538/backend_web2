@@ -76,13 +76,13 @@ export class CandidatosService {
 
     if (!user) throw new NotFoundException('Candidato no encontrado');
 
-    // Buscar cvUrl: postulación más reciente de este candidato a una vacante de esta empresa
+    // Buscar cvUrl y postulacionId: postulación más reciente de este candidato a una vacante de esta empresa
     const postulacion = await this.prisma.postulacion.findFirst({
       where: {
         candidatoId: candidatoId,
         oferta: { empresaId: companyId },
       },
-      select: { urlCv: true },
+      select: { id: true, urlCv: true },
       orderBy: { creadaEl: 'desc' },
     });
 
@@ -106,7 +106,8 @@ export class CandidatosService {
       idiomas:    user.candidato?.idiomas   ?? [],
       educacion:  user.candidato?.educacion ?? [],
       experiencia: user.candidato?.experiencia ?? [],
-      cvUrl:      postulacion?.urlCv ?? null,
+      cvUrl:         postulacion?.urlCv ?? null,
+      postulacionId: postulacion?.id    ?? null,
     };
   }
 
@@ -162,6 +163,7 @@ export class CandidatosService {
     // Vacante seleccionada → match score + marcar postulados
     let vacante: any      = null;
     let postulacionesSet  = new Set<string>();
+    let postulacionIdMap  = new Map<string, string>();
 
     if (vacanteId) {
       vacante = await this.prisma.ofertaLaboral.findFirst({
@@ -171,9 +173,10 @@ export class CandidatosService {
       if (vacante) {
         const posts = await this.prisma.postulacion.findMany({
           where:  { ofertaId: vacanteId },
-          select: { candidatoId: true },
+          select: { id: true, candidatoId: true },
         });
         postulacionesSet = new Set(posts.map((p) => p.candidatoId));
+        postulacionIdMap = new Map(posts.map((p) => [p.candidatoId, p.id]));
       }
     }
 
@@ -225,22 +228,24 @@ export class CandidatosService {
       const scoreDesglose = scoreDetalle
         ? { habilidades: scoreDetalle.skillsScore, experiencia: scoreDetalle.expScore }
         : null;
-      const postulado = vacante ? postulacionesSet.has(u.id) : false;
+      const postulado     = vacante ? postulacionesSet.has(u.id) : false;
+      const postulacionId = vacante ? (postulacionIdMap.get(u.id) ?? null) : null;
 
       return {
-        id:          u.id,
-        name:        u.fullName,
-        role:        u.titulo ?? 'Candidato',
-        avatar:      u.avatarUrl ?? null,
-        available:   true,
-        skills:      topSkills,
-        location:    u.ubicacion ?? 'Sin ubicación',
-        experience:  totalExp > 0 ? `${totalExp} años de experiencia` : 'Sin experiencia registrada',
+        id:            u.id,
+        name:          u.fullName,
+        role:          u.titulo ?? 'Candidato',
+        avatar:        u.avatarUrl ?? null,
+        available:     true,
+        skills:        topSkills,
+        location:      u.ubicacion ?? 'Sin ubicación',
+        experience:    totalExp > 0 ? `${totalExp} años de experiencia` : 'Sin experiencia registrada',
         techInitials,
         score,
         scoreDesglose,
         postulado,
-        createdAt:   u.createdAt,
+        postulacionId,
+        createdAt:     u.createdAt,
       };
     });
 

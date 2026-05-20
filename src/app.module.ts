@@ -16,6 +16,7 @@ import { NavigationModule } from './navigation/navigation.module';
 import { CurriculumModule } from './curriculum/curriculum.module';
 import { EntrevistasModule } from './entrevistas/entrevistas.module';
 import { FavoritosModule } from './favoritos/favoritos.module';
+import { MensajesModule } from './mensajes/mensajes.module';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { FavoritosModule } from './favoritos/favoritos.module';
     AdminModule,
     EntrevistasModule,
     FavoritosModule,
+    MensajesModule,
   ],
 })
 export class AppModule {}

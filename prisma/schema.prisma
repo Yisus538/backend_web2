@@ -22,6 +22,7 @@ model User {
   resetTokenExpiresAt        DateTime?
   verificationTokenHash      String?         @map("token_verificacion_hash")
   resetTokenHash             String?         @map("token_reset_hash")
+  resendCooldownUntil        DateTime?       @map("resend_cooldown_until")
   avatarUrl                  String?
   telefono                   String?
   ubicacion                  String?
@@ -32,6 +33,7 @@ model User {
   administrativo             Administrativo?
   candidato                  Candidato?
   empresa                    Empresa?
+  mensajes                   Mensaje[]
 
   @@map("usuarios")
 }
@@ -156,6 +158,7 @@ model Postulacion {
   creadaEl          DateTime               @default(now()) @map("creada_el")
   analisis          AnalisisCvPostulacion?
   entrevista        Entrevista?
+  conversacion      Conversacion?
   historialAnalisis HistorialAnalisis[]
   candidato         Candidato              @relation(fields: [candidatoId], references: [usuarioId], onDelete: Cascade)
   oferta            OfertaLaboral          @relation(fields: [ofertaId], references: [id], onDelete: Cascade)
@@ -351,4 +354,30 @@ model Idioma {
   candidato        Candidato          @relation(fields: [candidatoId], references: [usuarioId], onDelete: Cascade)
 
   @@map("idiomas")
+}
+
+model Conversacion {
+  id            String      @id @default(uuid())
+  postulacionId String      @unique @map("postulacion_id")
+  creadaEl      DateTime    @default(now()) @map("creada_el")
+
+  postulacion   Postulacion @relation(fields: [postulacionId], references: [id], onDelete: Cascade)
+  mensajes      Mensaje[]
+
+  @@map("conversaciones")
+}
+
+model Mensaje {
+  id             String       @id @default(uuid())
+  conversacionId String       @map("conversacion_id")
+  autorId        String       @map("autor_id")
+  texto          String
+  leido          Boolean      @default(false)
+  creadoEn       DateTime     @default(now()) @map("creado_en")
+
+  conversacion   Conversacion @relation(fields: [conversacionId], references: [id], onDelete: Cascade)
+  autor          User         @relation(fields: [autorId], references: [id], onDelete: Cascade)
+
+  @@index([conversacionId, creadoEn])
+  @@map("mensajes")
 }
