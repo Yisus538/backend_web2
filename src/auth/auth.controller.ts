@@ -73,12 +73,10 @@ export class AuthController {
     // automáticamente en cada request. El JS del cliente nunca los ve.
     setAuthCookies(res, result.tokens);
 
-    // Se devuelve solo la información que la UI necesita: user y nav.
-    // Los tokens no se incluyen en el body intencionalmente.
     return {
       ok:      true,
       message: 'Sesión iniciada',
-      data:    { user: result.user, nav: result.nav, accessToken: result.tokens.accessToken, refreshToken: result.tokens.refreshToken },
+      data:    { user: result.user, nav: result.nav },
     };
   }
 
@@ -170,7 +168,7 @@ export class AuthController {
     const tokens = await this.authService.refreshTokens(refreshToken);
     setAuthCookies(res, tokens);
 
-    return { ok: true, data: { accessToken: tokens.accessToken, refreshToken: tokens.refreshToken }, message: 'Tokens renovados' };
+    return { ok: true, message: 'Tokens renovados' };
   }
 
   // ── POST /api/auth/resend-verification ───────────────────────────────────

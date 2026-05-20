@@ -22,6 +22,7 @@ model User {
   resetTokenExpiresAt        DateTime?
   verificationTokenHash      String?         @map("token_verificacion_hash")
   resetTokenHash             String?         @map("token_reset_hash")
+  resendCooldownUntil        DateTime?       @map("resend_cooldown_until")
   avatarUrl                  String?
   telefono                   String?
   ubicacion                  String?

@@ -221,6 +221,7 @@ export class CvService {
           habilidad.id,
           s.nivel_estimado ?? null,
           'habilidad',
+          analisis.id,
         );
         if (created) skillsNuevas++;
       } catch (err) {
@@ -245,6 +246,7 @@ export class CvService {
           habilidad.id,
           null,
           'tecnologia',
+          analisis.id,
         );
         if (created) tecnologiasNuevas++;
       } catch (err) {
@@ -388,18 +390,17 @@ export class CvService {
     });
   }
 
-  // Upsert de CandidatoHabilidad: inserta si no existe, no sobrescribe nivel manual.
-  // Retorna { created: boolean }.
   private async upsertCandidatoHabilidad(
     candidatoId: string,
     habilidadId: string,
     nivel: string | null,
     tipo: 'habilidad' | 'tecnologia',
+    analisisOrigenId: string | null = null,
   ): Promise<{ created: boolean }> {
     try {
       await this.prisma.candidatoHabilidad.upsert({
         where:  { candidatoId_habilidadId: { candidatoId, habilidadId } },
-        create: { candidatoId, habilidadId, nivel, tipo },
+        create: { candidatoId, habilidadId, nivel, tipo, analisisOrigenId },
         update: { tipo },
       });
       return { created: true };
