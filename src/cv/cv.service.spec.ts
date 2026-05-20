@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { CvService } from './cv.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
 
 describe('CvService', () => {
   let service: CvService;
@@ -41,11 +42,16 @@ describe('CvService', () => {
     },
   };
 
+  const mockCloudinary = {
+    uploadCv: jest.fn().mockResolvedValue({ secureUrl: 'https://res.cloudinary.com/test/cv.pdf', publicId: 'test-id' }),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CvService,
-        { provide: PrismaService, useValue: mockPrisma },
+        { provide: PrismaService,     useValue: mockPrisma },
+        { provide: CloudinaryService, useValue: mockCloudinary },
       ],
     }).compile();
 

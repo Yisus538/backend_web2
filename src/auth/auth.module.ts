@@ -10,9 +10,11 @@ import { NavigationModule } from '../navigation/navigation.module';
 @Module({
   imports: [
     PassportModule,
-    JwtModule.register({
-      secret:      process.env.JWT_SECRET || 'dev_secret_change_in_production_min32chars',
-      signOptions: { expiresIn: (process.env.JWT_EXPIRES_IN || '1h') as any },
+    JwtModule.registerAsync({
+      useFactory: () => ({
+        secret:      process.env.JWT_SECRET,
+        signOptions: { expiresIn: (process.env.JWT_EXPIRES_IN || '1h') as any },
+      }),
     }),
     EmailModule,
     NavigationModule,

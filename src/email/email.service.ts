@@ -22,11 +22,14 @@ export class EmailService implements OnModuleInit {
       return;
     }
 
-    // Resolver smtp.gmail.com a IPv4 explícitamente para evitar que
-    // Railway intente conectarse por IPv6 (no tiene salida IPv6)
+    // Resolver smtp.gmail.com a IPv4 para Railway (sin IPv6 saliente).
+    // Timeout de 3s: si DNS no responde, se usa el hostname y el servidor no se congela.
     let smtpHost = 'smtp.gmail.com';
     try {
-      const [ipv4] = await resolve4('smtp.gmail.com');
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('DNS timeout')), 3000),
+      );
+      const [ipv4] = await Promise.race([resolve4('smtp.gmail.com'), timeout]);
       smtpHost = ipv4;
       this.logger.log(`SMTP host resuelto a IPv4: ${smtpHost}`);
     } catch (err) {

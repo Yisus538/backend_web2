@@ -174,26 +174,11 @@ export class AuthController {
   }
 
   // ── POST /api/auth/resend-verification ───────────────────────────────────
-  // Intenta obtener el userId desde la cookie si el usuario está logueado.
   @Post('resend-verification')
   @HttpCode(HttpStatus.OK)
   async resendVerification(@Body('email') email: string, @Req() req: Request) {
-    let userId: string | undefined;
-    try {
-      const token = req.cookies?.accessToken;
-      if (token) {
-        const jwt     = require('jsonwebtoken');
-        const payload = jwt.verify(
-          token,
-          process.env.JWT_SECRET || 'dev_secret_change_in_production_min32chars',
-        ) as any;
-        userId = payload?.userId;
-      }
-    } catch {
-      // Token expirado o ausente → se usa solo el email del body
-    }
-
-    const message = await this.authService.resendVerification(email, userId);
+    const cookieToken = req.cookies?.accessToken;
+    const message = await this.authService.resendVerification(email, cookieToken);
     return { ok: true, message };
   }
 }

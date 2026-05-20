@@ -31,12 +31,18 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 
 const MAX_FAILED    = 5;
 const LOCK_MINUTES  = 15;
-// ⚠️  These MUST be read lazily (via getter) because at module-load time
-//     ConfigModule hasn't loaded .env yet, so process.env.JWT_SECRET is undefined.
-//     jwt.strategy.ts reads them inside its constructor (after DI), causing a
-//     secret mismatch → "invalid signature" on every authenticated request.
-const jwtSecret    = () => process.env.JWT_SECRET    || 'dev_secret_change_in_production_min32chars';
-const jwtRefSec    = () => process.env.JWT_REFRESH_SECRET || 'dev_refresh_secret_change_in_production_32c';
+// ⚠️  Lazy getters: ConfigModule carga .env después del module-load time.
+//     Leer process.env dentro de la función garantiza que ya está disponible.
+const jwtSecret    = () => {
+  const s = process.env.JWT_SECRET;
+  if (!s) throw new Error('JWT_SECRET no está configurado en las variables de entorno');
+  return s;
+};
+const jwtRefSec    = () => {
+  const s = process.env.JWT_REFRESH_SECRET;
+  if (!s) throw new Error('JWT_REFRESH_SECRET no está configurado en las variables de entorno');
+  return s;
+};
 const jwtExp       = () => process.env.JWT_EXPIRES_IN        || '1h';
 const jwtRefExp    = () => process.env.JWT_REFRESH_EXPIRES_IN || '7d';
 
@@ -402,8 +408,16 @@ export class AuthService {
   // ────────────────────────────────────────────────────────────
   // POST /api/auth/resend-verification
   // ────────────────────────────────────────────────────────────
-  async resendVerification(email?: string, userId?: string) {
+  async resendVerification(email?: string, cookieToken?: string) {
     let user: any = null;
+    let userId: string | undefined;
+
+    if (cookieToken) {
+      try {
+        const payload = jwt.verify(cookieToken, jwtSecret()) as any;
+        userId = payload?.userId;
+      } catch { /* token expirado o inválido — continuar con email */ }
+    }
 
     if (email) {
       user = await this.prisma.user.findUnique({ where: { email } });

@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { CvAnalisisDto } from './dto/cv-analisis.dto';
 
 // Normaliza el string "periodo" de Make al formato interno.
@@ -44,7 +45,36 @@ function parseScore(raw: string | number | null | undefined): number | null {
 export class CvService {
   private readonly logger = new Logger(CvService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma:            PrismaService,
+    private readonly cloudinaryService: CloudinaryService,
+  ) {}
+
+  // Sube el CV a Cloudinary y persiste la URL en candidato.urlCv.
+  // Retorna la secureUrl o null si falla (el análisis IA continúa igual).
+  async uploadCvAndPersist(
+    file: Express.Multer.File,
+    candidatoId: string,
+  ): Promise<string | null> {
+    if (file.mimetype !== 'application/pdf') return null;
+    try {
+      const { secureUrl } = await this.cloudinaryService.uploadCv(
+        file.buffer,
+        candidatoId,
+        file.originalname,
+      );
+      await this.prisma.candidato.upsert({
+        where:  { usuarioId: candidatoId },
+        create: { usuarioId: candidatoId, urlCv: secureUrl },
+        update: { urlCv: secureUrl },
+      });
+      this.logger.log(`[uploadCvAndPersist] CV subido: ${secureUrl}`);
+      return secureUrl;
+    } catch (err) {
+      this.logger.error('[uploadCvAndPersist] Error subiendo a Cloudinary:', err);
+      return null;
+    }
+  }
 
   // GET /api/cv/analisis — devuelve análisis + datos redistribuidos de la BD
   async getAnalisis(candidatoId: string) {

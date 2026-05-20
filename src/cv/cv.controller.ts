@@ -10,6 +10,7 @@ import {
   UseGuards,
   BadRequestException,
   UnauthorizedException,
+  InternalServerErrorException,
   HttpCode,
   HttpStatus,
   Logger,
@@ -21,18 +22,13 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser, JwtPayload } from '../common/decorators/current-user.decorator';
 import { CvService } from './cv.service';
 import { CvAnalisisDto } from './dto/cv-analisis.dto';
-import { CloudinaryService } from '../cloudinary/cloudinary.service';
-import { PrismaService } from '../prisma/prisma.service';
-
 
 @Controller('cv')
 export class CvController {
   private readonly logger = new Logger(CvController.name);
 
   constructor(
-    private readonly cvService:        CvService,
-    private readonly cloudinaryService: CloudinaryService,
-    private readonly prisma:            PrismaService,
+    private readonly cvService: CvService,
   ) {}
 
   // ────────────────────────────────────────────────────────────────
@@ -50,11 +46,10 @@ export class CvController {
   ) {
     if (!file) throw new BadRequestException('No se recibió el archivo del CV');
 
-    // Make es fire-and-forget; Cloudinary se espera para retornar la URL al frontend
     this.sendToMake(file, user.userId).catch(err =>
       this.logger.error('[analyze] Error enviando a Make.com:', err),
     );
-    const cvUrl = await this.uploadCvToCloudinary(file, user.userId);
+    const cvUrl = await this.cvService.uploadCvAndPersist(file, user.userId);
 
     return { ok: true, message: 'CV recibido, procesando...', data: { cvUrl } };
   }
@@ -98,7 +93,11 @@ export class CvController {
     @Query('candidatoId') candidatoIdQuery: string,
     @Body() rawPayload: Record<string, any>,
   ) {
-    const expected = process.env.WEBHOOK_SECRET ?? 'reclutaia-make-2024';
+    const expected = process.env.WEBHOOK_SECRET;
+    if (!expected) {
+      this.logger.error('[callback] WEBHOOK_SECRET no configurado en el servidor');
+      throw new InternalServerErrorException('Configuración del servidor incompleta');
+    }
     if (!secret || secret !== expected) {
       this.logger.warn('[callback] Intento con secret inválido');
       throw new UnauthorizedException('Secret inválido');
@@ -212,32 +211,6 @@ export class CvController {
 
     await this.cvService.procesarAnalisis(candidatoId, payload);
     return { ok: true, message: 'Análisis procesado' };
-  }
-
-  // Sube el CV a Cloudinary y persiste la URL en el registro de Candidato.
-  // Retorna la secureUrl, o null si falla (el análisis IA sigue igual).
-  private async uploadCvToCloudinary(
-    file: Express.Multer.File,
-    candidatoId: string,
-  ): Promise<string | null> {
-    if (file.mimetype !== 'application/pdf') return null;
-    try {
-      const { secureUrl } = await this.cloudinaryService.uploadCv(
-        file.buffer,
-        candidatoId,
-        file.originalname,
-      );
-      await this.prisma.candidato.upsert({
-        where:  { usuarioId: candidatoId },
-        create: { usuarioId: candidatoId, urlCv: secureUrl },
-        update: { urlCv: secureUrl },
-      });
-      this.logger.log(`[analyze] CV subido a Cloudinary: ${secureUrl}`);
-      return secureUrl;
-    } catch (err) {
-      this.logger.error('[analyze] Error subiendo CV a Cloudinary:', err);
-      return null;
-    }
   }
 
   // ────────────────────────────────────────────────────────────────

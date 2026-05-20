@@ -35,8 +35,9 @@ describe('CV Flow — Integración', () => {
         {
           provide: CvService,
           useValue: {
-            getAnalisis: jest.fn().mockResolvedValue(null),
-            procesarAnalisis: jest.fn().mockResolvedValue(undefined),
+            getAnalisis:        jest.fn().mockResolvedValue(null),
+            procesarAnalisis:   jest.fn().mockResolvedValue(undefined),
+            uploadCvAndPersist: jest.fn().mockResolvedValue(null),
           },
         },
         { provide: CloudinaryService, useValue: { uploadFile: jest.fn() } },

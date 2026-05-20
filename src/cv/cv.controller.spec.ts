@@ -2,13 +2,11 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { CvController } from './cv.controller';
 import { CvService } from './cv.service';
-import { CloudinaryService } from '../cloudinary/cloudinary.service';
-import { PrismaService } from '../prisma/prisma.service';
 import { JwtPayload } from '../common/decorators/current-user.decorator';
 
 describe('CvController', () => {
   let controller: CvController;
-  let cvService: jest.Mocked<Pick<CvService, 'getAnalisis' | 'procesarAnalisis'>>;
+  let cvService: jest.Mocked<Pick<CvService, 'getAnalisis' | 'procesarAnalisis' | 'uploadCvAndPersist'>>;
   let fetchSpy: jest.SpyInstance;
 
   const mockUser: JwtPayload = {
@@ -25,17 +23,18 @@ describe('CvController', () => {
   } as Express.Multer.File;
 
   beforeEach(async () => {
+    process.env.WEBHOOK_SECRET = 'reclutaia-make-2024';
+
     const mockCvService = {
-      getAnalisis: jest.fn(),
-      procesarAnalisis: jest.fn().mockResolvedValue(undefined),
+      getAnalisis:       jest.fn(),
+      procesarAnalisis:  jest.fn().mockResolvedValue(undefined),
+      uploadCvAndPersist: jest.fn().mockResolvedValue(null),
     };
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [CvController],
       providers: [
-        { provide: CvService,        useValue: mockCvService },
-        { provide: CloudinaryService, useValue: { uploadFile: jest.fn() } },
-        { provide: PrismaService,     useValue: {} },
+        { provide: CvService, useValue: mockCvService },
       ],
     }).compile();
 
