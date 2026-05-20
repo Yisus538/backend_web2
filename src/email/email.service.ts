@@ -41,6 +41,7 @@ export class EmailService implements OnModuleInit {
       port: 465,
       secure: true,
       auth: { user, pass },
+      tls: { servername: 'smtp.gmail.com' },
     });
 
     this.transporter.verify().then(() => {
