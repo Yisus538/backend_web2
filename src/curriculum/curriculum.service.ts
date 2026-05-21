@@ -5,6 +5,17 @@ import { PrismaService } from '../prisma/prisma.service';
 export class CurriculumService {
   constructor(private prisma: PrismaService) {}
 
+  private async assertOwns<T>(
+    delegate: { findFirst: (args: any) => Promise<T | null> },
+    id: string,
+    candidatoId: string,
+  ): Promise<T> {
+    if (!id) throw new BadRequestException('id es requerido');
+    const item = await delegate.findFirst({ where: { id, candidatoId } });
+    if (!item) throw new NotFoundException('Registro no encontrado');
+    return item;
+  }
+
   // ────────────────────────────────────────────────────────────
   // IDIOMAS  GET / POST / PATCH / DELETE
   // ────────────────────────────────────────────────────────────
@@ -40,16 +51,12 @@ export class CurriculumService {
 
   async updateIdioma(userId: string, body: any) {
     const { id, ...updates } = body;
-    if (!id) throw new BadRequestException('id es requerido');
-    const item = await this.prisma.idioma.findFirst({ where: { id, candidatoId: userId } });
-    if (!item) throw new NotFoundException('Registro no encontrado');
+    await this.assertOwns(this.prisma.idioma, id, userId);
     return this.prisma.idioma.update({ where: { id }, data: updates });
   }
 
   async deleteIdioma(userId: string, id: string) {
-    if (!id) throw new BadRequestException('id es requerido');
-    const item = await this.prisma.idioma.findFirst({ where: { id, candidatoId: userId } });
-    if (!item) throw new NotFoundException('Registro no encontrado');
+    await this.assertOwns(this.prisma.idioma, id, userId);
     await this.prisma.idioma.delete({ where: { id } });
   }
 
@@ -85,21 +92,13 @@ export class CurriculumService {
 
   async updateExperiencia(userId: string, body: any) {
     const { id, ...updates } = body;
-    if (!id) throw new BadRequestException('id es requerido');
-    const item = await this.prisma.experienciaLaboral.findFirst({
-      where: { id, candidatoId: userId },
-    });
-    if (!item) throw new NotFoundException('Registro no encontrado');
+    await this.assertOwns(this.prisma.experienciaLaboral, id, userId);
     if (updates.actual) updates.fechaFin = null;
     return this.prisma.experienciaLaboral.update({ where: { id }, data: updates });
   }
 
   async deleteExperiencia(userId: string, id: string) {
-    if (!id) throw new BadRequestException('id es requerido');
-    const item = await this.prisma.experienciaLaboral.findFirst({
-      where: { id, candidatoId: userId },
-    });
-    if (!item) throw new NotFoundException('Registro no encontrado');
+    await this.assertOwns(this.prisma.experienciaLaboral, id, userId);
     await this.prisma.experienciaLaboral.delete({ where: { id } });
   }
 
@@ -135,17 +134,13 @@ export class CurriculumService {
 
   async updateEducacion(userId: string, body: any) {
     const { id, ...updates } = body;
-    if (!id) throw new BadRequestException('id es requerido');
-    const item = await this.prisma.educacion.findFirst({ where: { id, candidatoId: userId } });
-    if (!item) throw new NotFoundException('Registro no encontrado');
+    await this.assertOwns(this.prisma.educacion, id, userId);
     if (updates.cursando) updates.fechaFin = null;
     return this.prisma.educacion.update({ where: { id }, data: updates });
   }
 
   async deleteEducacion(userId: string, id: string) {
-    if (!id) throw new BadRequestException('id es requerido');
-    const item = await this.prisma.educacion.findFirst({ where: { id, candidatoId: userId } });
-    if (!item) throw new NotFoundException('Registro no encontrado');
+    await this.assertOwns(this.prisma.educacion, id, userId);
     await this.prisma.educacion.delete({ where: { id } });
   }
 }
