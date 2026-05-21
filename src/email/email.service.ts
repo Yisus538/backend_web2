@@ -51,6 +51,13 @@ export class EmailService implements OnModuleInit {
     });
   }
 
+  private tpl(title: string, body: string, maxWidth = '520px'): string {
+    return `<div style="font-family:sans-serif;max-width:${maxWidth};margin:0 auto;padding:32px;">
+      <h2 style="color:#1a405b;">${title}</h2>
+      ${body}
+    </div>`;
+  }
+
   private async send(to: string, subject: string, html: string): Promise<void> {
     if (!this.transporter) {
       this.logger.warn(`Email omitido (transporter no configurado) → ${to}`);
@@ -72,8 +79,7 @@ export class EmailService implements OnModuleInit {
     await this.send(
       email,
       'Verificá tu cuenta — ReclutaIA',
-      `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px;">
-        <h2 style="color:#1a405b;">Hola, ${fullName}!</h2>
+      this.tpl(`Hola, ${fullName}!`, `
         <p>Gracias por registrarte en <strong>ReclutaIA</strong>.</p>
         <p>Hacé clic en el botón para verificar tu cuenta:</p>
         <a href="${verifyUrl}"
@@ -86,7 +92,7 @@ export class EmailService implements OnModuleInit {
           Si no creaste esta cuenta, ignorá este mail.
         </p>
         <p style="color:#888;font-size:12px;">O copiá este link: ${verifyUrl}</p>
-      </div>`,
+      `, '480px'),
     );
   }
 
@@ -97,8 +103,7 @@ export class EmailService implements OnModuleInit {
     await this.send(
       email,
       'Restablecer contraseña — ReclutaIA',
-      `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px;">
-        <h2 style="color:#1a405b;">Restablecer contraseña</h2>
+      this.tpl('Restablecer contraseña', `
         <p>Recibimos una solicitud para restablecer tu contraseña.</p>
         <a href="${resetUrl}"
            style="display:inline-block;background:#1a405b;color:#fff;padding:12px 24px;
@@ -109,7 +114,7 @@ export class EmailService implements OnModuleInit {
           Este enlace expira en ${expiryMin} minutos.<br>
           Si no solicitaste esto, ignorá este mail.
         </p>
-      </div>`,
+      `, '480px'),
     );
   }
 
@@ -121,12 +126,11 @@ export class EmailService implements OnModuleInit {
     await this.send(
       email,
       `Recibimos tu postulación — ${vacante}`,
-      `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:32px;">
-        <h2 style="color:#1a405b;">Hola, ${nombre}!</h2>
+      this.tpl(`Hola, ${nombre}!`, `
         <p>Tu postulación a <strong>${vacante}</strong> en <strong>${empresa}</strong> fue recibida correctamente.</p>
         <p>Nuestra IA está evaluando tu perfil para esta posición. Te notificaremos el resultado en los próximos minutos.</p>
         <p style="color:#888;font-size:13px;">Si no te postulaste, ignorá este mensaje.</p>
-      </div>`,
+      `),
     );
   }
 
@@ -145,8 +149,7 @@ export class EmailService implements OnModuleInit {
     await this.send(
       email,
       `¡Tu postulación avanzó! — ${vacante}`,
-      `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:32px;">
-        <h2 style="color:#1a405b;">¡Felicitaciones, ${nombre}!</h2>
+      this.tpl(`¡Felicitaciones, ${nombre}!`, `
         <p>Tu postulación a <strong>${vacante}</strong>${empresa ? ` en <strong>${empresa}</strong>` : ''} fue <strong style="color:#16a34a;">aceptada</strong> por nuestra IA.</p>
         <div style="background:#f0fdf4;border-left:4px solid #16a34a;padding:16px;border-radius:4px;margin:20px 0;">
           ${scoreStr}
@@ -154,7 +157,7 @@ export class EmailService implements OnModuleInit {
         </div>
         <p>Próximos pasos: la empresa confirmará la fecha, hora y link de la entrevista.</p>
         <p style="color:#888;font-size:13px;">Podés ver el estado en tu portal de candidato.</p>
-      </div>`,
+      `),
     );
   }
 
@@ -168,12 +171,11 @@ export class EmailService implements OnModuleInit {
     await this.send(
       email,
       `Candidato aceptado automáticamente — ${vacante}`,
-      `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:32px;">
-        <h2 style="color:#1a405b;">Nuevo candidato aceptado</h2>
+      this.tpl('Nuevo candidato aceptado', `
         <p>Hola${nombreEmpresa ? ` ${nombreEmpresa}` : ''}. La IA evaluó a <strong>${candidato}</strong> para <strong>${vacante}</strong> y obtuvo un score de <strong>${matchScore}%</strong>.</p>
         ${fortList ? `<p>Principales fortalezas detectadas:</p><ul>${fortList}</ul>` : ''}
         <p>Ingresá a ReclutaIA para confirmar la fecha y hora de la entrevista.</p>
-      </div>`,
+      `),
     );
   }
 
@@ -184,11 +186,10 @@ export class EmailService implements OnModuleInit {
     await this.send(
       email,
       `Nuevo postulante para revisar — ${vacante}`,
-      `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:32px;">
-        <h2 style="color:#1a405b;">Revisión manual requerida</h2>
+      this.tpl('Revisión manual requerida', `
         <p><strong>${candidato}</strong> se postuló a <strong>${vacante}</strong>. El score de compatibilidad no alcanzó el umbral automático.</p>
         <p>Revisá su perfil en ReclutaIA para decidir si avanza al proceso.</p>
-      </div>`,
+      `),
     );
   }
 
@@ -208,8 +209,7 @@ export class EmailService implements OnModuleInit {
     await this.send(
       email,
       `Entrevista confirmada — ${vacante}`,
-      `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:32px;">
-        <h2 style="color:#1a405b;">Tu entrevista está confirmada</h2>
+      this.tpl('Tu entrevista está confirmada', `
         <p>Hola ${nombre}. Tu entrevista para <strong>${vacante}</strong> fue confirmada.</p>
         <div style="background:#eff6ff;border-left:4px solid #2563eb;padding:16px;border-radius:4px;margin:20px 0;">
           <p style="margin:0;"><strong>📅 Fecha:</strong> ${fechaStr}</p>
@@ -217,7 +217,7 @@ export class EmailService implements OnModuleInit {
         </div>
         ${lugarStr}
         <p style="color:#888;font-size:13px;">Ante cualquier inconveniente, contactá directamente a la empresa.</p>
-      </div>`,
+      `),
     );
   }
 
@@ -231,11 +231,10 @@ export class EmailService implements OnModuleInit {
     await this.send(
       email,
       `Recordatorio: entrevista mañana — ${vacante}`,
-      `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:32px;">
-        <h2 style="color:#1a405b;">Tu entrevista es mañana</h2>
+      this.tpl('Tu entrevista es mañana', `
         <p>Hola ${nombre}. Te recordamos que mañana a las <strong>${fechaStr}</strong> tenés tu entrevista para <strong>${vacante}</strong>.</p>
         ${linkStr}
-      </div>`,
+      `),
     );
   }
 
@@ -246,11 +245,10 @@ export class EmailService implements OnModuleInit {
     await this.send(
       email,
       `¡Sos finalista en ${vacante}!`,
-      `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:32px;">
-        <h2 style="color:#1a405b;">¡Llegaste a la etapa final!</h2>
+      this.tpl('¡Llegaste a la etapa final!', `
         <p>Hola ${nombre}. Nos complace informarte que avanzaste a la etapa de <strong>finalistas</strong> para <strong>${vacante}</strong>.</p>
         <p>La empresa se pondrá en contacto contigo a la brevedad para los próximos pasos.</p>
-      </div>`,
+      `),
     );
   }
 
@@ -269,13 +267,12 @@ export class EmailService implements OnModuleInit {
     await this.send(
       email,
       `Actualización sobre tu postulación — ${vacante}`,
-      `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:32px;">
-        <h2 style="color:#1a405b;">Gracias por participar</h2>
+      this.tpl('Gracias por participar', `
         <p>Hola ${nombre}. Lamentablemente en esta oportunidad tu perfil no fue seleccionado para <strong>${vacante}</strong>.</p>
         ${fortHtml}${debHtml}
         <p>Te animamos a seguir aplicando. ¡Mucho éxito!</p>
         <p style="color:#888;font-size:13px;">Este análisis fue generado automáticamente por nuestra IA.</p>
-      </div>`,
+      `),
     );
   }
 
@@ -286,11 +283,10 @@ export class EmailService implements OnModuleInit {
     await this.send(
       email,
       `¡Felicitaciones, fuiste seleccionado! — ${vacante}`,
-      `<div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:32px;">
-        <h2 style="color:#1a405b;">¡Felicitaciones, ${nombre}!</h2>
+      this.tpl(`¡Felicitaciones, ${nombre}!`, `
         <p>Nos complace informarte que fuiste seleccionado/a para <strong>${vacante}</strong>.</p>
         <p>La empresa se comunicará contigo para coordinar tu incorporación. ¡Mucho éxito en esta nueva etapa!</p>
-      </div>`,
+      `),
     );
   }
 }
