@@ -162,15 +162,18 @@ export class EntrevistasService {
     const vacanteNombre   = entrevista.postulacion.oferta.titulo;
 
     if (dto.estado === 'confirmada' && !estabaConfirmada) {
-      this.email.sendConfirmacionEntrevista(
-        candidatoEmail,
-        candidatoNombre,
-        vacanteNombre,
-        updated.fecha ?? null,
-        updated.linkMeet ?? null,
-        updated.ubicacion ?? null,
-        updated.tipo,
-      ).catch(err => console.error('[entrevista/confirmar] email:', err));
+      this.email.sendSafe(
+        this.email.sendConfirmacionEntrevista(
+          candidatoEmail,
+          candidatoNombre,
+          vacanteNombre,
+          updated.fecha ?? null,
+          updated.linkMeet ?? null,
+          updated.ubicacion ?? null,
+          updated.tipo,
+        ),
+        'confirmacion-entrevista',
+      );
     }
 
     return updated;

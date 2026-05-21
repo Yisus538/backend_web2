@@ -38,6 +38,7 @@ const mockPrisma = {
 
 const mockEmail = {
   sendConfirmacionEntrevista: jest.fn().mockResolvedValue(undefined),
+  sendSafe: jest.fn(),
 };
 
 describe('EntrevistasService', () => {

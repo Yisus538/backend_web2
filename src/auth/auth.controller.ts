@@ -23,6 +23,7 @@ import { RegisterDto }        from './dto/register.dto';
 import { ForgotPasswordDto }  from './dto/forgot-password.dto';
 import { ResetPasswordDto }   from './dto/reset-password.dto';
 import { UpdateProfileDto }   from './dto/update-profile.dto';
+import { ok }                from '../common/utils/response.utils';
 
 // ── Helpers de cookies ────────────────────────────────────────────────────────
 // SameSite: 'none' + Secure: true  → requerido para dominios cruzados en producción
@@ -73,11 +74,7 @@ export class AuthController {
     // automáticamente en cada request. El JS del cliente nunca los ve.
     setAuthCookies(res, result.tokens);
 
-    return {
-      ok:      true,
-      message: 'Sesión iniciada',
-      data:    { user: result.user, nav: result.nav },
-    };
+    return ok('Sesión iniciada', { user: result.user, nav: result.nav });
   }
 
   // ── POST /api/auth/logout ─────────────────────────────────────────────────
@@ -86,7 +83,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async logout(@Res({ passthrough: true }) res: Response) {
     clearAuthCookies(res);
-    return { ok: true, message: 'Sesión cerrada' };
+    return ok('Sesión cerrada');
   }
 
   // ── POST /api/auth/register ───────────────────────────────────────────────
@@ -94,7 +91,7 @@ export class AuthController {
   @Throttle({ default: { ttl: 900_000, limit: 5 } })
   async register(@Body() dto: RegisterDto) {
     const user = await this.authService.register(dto);
-    return { ok: true, message: 'Cuenta creada exitosamente', data: { user } };
+    return ok('Cuenta creada exitosamente', { user });
   }
 
   // ── GET /api/auth/me ──────────────────────────────────────────────────────
@@ -102,7 +99,7 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   async getMe(@CurrentUser() user: JwtPayload) {
     const data = await this.authService.getMe(user.userId);
-    return { ok: true, message: 'Usuario autenticado', data };
+    return ok('Usuario autenticado', data);
   }
 
   // ── PATCH /api/auth/me ────────────────────────────────────────────────────
@@ -111,7 +108,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async updateMe(@CurrentUser() user: JwtPayload, @Body() dto: UpdateProfileDto) {
     const updated = await this.authService.updateMe(user.userId, dto);
-    return { ok: true, message: 'Perfil actualizado', data: { user: updated } };
+    return ok('Perfil actualizado', { user: updated });
   }
 
   // ── DELETE /api/auth/me ───────────────────────────────────────────────────
@@ -130,7 +127,7 @@ export class AuthController {
   @Get('verify-email')
   async verifyEmail(@Query('token') token: string) {
     const message = await this.authService.verifyEmail(token);
-    return { ok: true, message };
+    return ok(message);
   }
 
   // ── POST /api/auth/forgot-password ───────────────────────────────────────
@@ -139,10 +136,7 @@ export class AuthController {
   @Throttle({ default: { ttl: 900_000, limit: 3 } })
   async forgotPassword(@Body() dto: ForgotPasswordDto) {
     await this.authService.forgotPassword(dto);
-    return {
-      ok:      true,
-      message: 'Si el correo existe, recibirás un enlace para restablecer tu contraseña.',
-    };
+    return ok('Si el correo existe, recibirás un enlace para restablecer tu contraseña.');
   }
 
   // ── POST /api/auth/reset-password ─────────────────────────────────────────
@@ -150,7 +144,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async resetPassword(@Body() dto: ResetPasswordDto) {
     await this.authService.resetPassword(dto);
-    return { ok: true, message: 'Contraseña restablecida exitosamente' };
+    return ok('Contraseña restablecida exitosamente');
   }
 
   // ── POST /api/auth/refresh ────────────────────────────────────────────────
@@ -168,7 +162,7 @@ export class AuthController {
     const tokens = await this.authService.refreshTokens(refreshToken);
     setAuthCookies(res, tokens);
 
-    return { ok: true, message: 'Tokens renovados' };
+    return ok('Tokens renovados');
   }
 
   // ── POST /api/auth/resend-verification ───────────────────────────────────
@@ -177,6 +171,6 @@ export class AuthController {
   async resendVerification(@Body('email') email: string, @Req() req: Request) {
     const cookieToken = req.cookies?.accessToken;
     const message = await this.authService.resendVerification(email, cookieToken);
-    return { ok: true, message };
+    return ok(message);
   }
 }

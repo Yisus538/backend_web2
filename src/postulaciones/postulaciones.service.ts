@@ -156,13 +156,15 @@ export class PostulacionesService {
       },
     });
 
-    // Email inmediato al candidato: confirmación de recepción
-    this.email.sendPostulacionRecibida(
-      candidato!.usuario.email,
-      candidato!.usuario.fullName,
-      oferta.titulo,
-      oferta.empresa.nombreEmpresa ?? oferta.empresa.usuario.fullName,
-    ).catch(err => console.error('[postulacion/crear] email error:', err));
+    this.email.sendSafe(
+      this.email.sendPostulacionRecibida(
+        candidato!.usuario.email,
+        candidato!.usuario.fullName,
+        oferta.titulo,
+        oferta.empresa.nombreEmpresa ?? oferta.empresa.usuario.fullName,
+      ),
+      'postulacion-recibida',
+    );
 
     const candidatoData = {
       nombre:      candidato!.usuario.fullName,
@@ -265,20 +267,26 @@ export class PostulacionesService {
         },
       });
 
-      this.email.sendEntrevistaAgendada(
-        candidatoEmail, candidatoNombre, vacanteNombre, empresaNombre,
-        matchScore, fechaTentativa,
-      ).catch(err => console.error('[callback] email candidato:', err));
+      this.email.sendSafe(
+        this.email.sendEntrevistaAgendada(
+          candidatoEmail, candidatoNombre, vacanteNombre, empresaNombre,
+          matchScore, fechaTentativa,
+        ),
+        'entrevista-candidato',
+      );
 
       if (empresaEmail) {
-        this.email.sendCandidatoAceptadoEmpresa(
-          empresaEmail,
-          postulacion.oferta.empresa.usuario.fullName,
-          candidatoNombre,
-          vacanteNombre,
-          matchScore,
-          fortalezas ?? [],
-        ).catch(err => console.error('[callback] email empresa:', err));
+        this.email.sendSafe(
+          this.email.sendCandidatoAceptadoEmpresa(
+            empresaEmail,
+            postulacion.oferta.empresa.usuario.fullName,
+            candidatoNombre,
+            vacanteNombre,
+            matchScore,
+            fortalezas ?? [],
+          ),
+          'candidato-aceptado',
+        );
       }
 
     } else {
@@ -288,9 +296,12 @@ export class PostulacionesService {
       });
 
       if (empresaEmail) {
-        this.email.sendPostulantePendiente(
-          empresaEmail, vacanteNombre, candidatoNombre,
-        ).catch(err => console.error('[callback] email empresa pending:', err));
+        this.email.sendSafe(
+          this.email.sendPostulantePendiente(
+            empresaEmail, vacanteNombre, candidatoNombre,
+          ),
+          'postulante-pendiente',
+        );
       }
     }
 
@@ -356,30 +367,35 @@ export class PostulacionesService {
 
     switch (estadoReal) {
       case 'entrevista':
-        this.email.sendEntrevistaAgendada(
-          candidatoEmail, candidatoNombre, vacanteNombre, '',
-          null, null,
-        ).catch(() => {});
+        this.email.sendSafe(
+          this.email.sendEntrevistaAgendada(candidatoEmail, candidatoNombre, vacanteNombre, '', null, null),
+          'cambio-estado-entrevista',
+        );
         break;
       case 'finalista':
-        this.email.sendFinalistaNotification(
-          candidatoEmail, candidatoNombre, vacanteNombre,
-        ).catch(() => {});
+        this.email.sendSafe(
+          this.email.sendFinalistaNotification(candidatoEmail, candidatoNombre, vacanteNombre),
+          'cambio-estado-finalista',
+        );
         break;
       case 'contratado':
-        this.email.sendContratadoNotification(
-          candidatoEmail, candidatoNombre, vacanteNombre,
-        ).catch(() => {});
+        this.email.sendSafe(
+          this.email.sendContratadoNotification(candidatoEmail, candidatoNombre, vacanteNombre),
+          'cambio-estado-contratado',
+        );
         break;
       case 'rechazado': {
         const analisis = await this.prisma.analisisCvPostulacion.findUnique({
           where: { postulacionId },
         });
-        this.email.sendRechazoPostulacion(
-          candidatoEmail, candidatoNombre, vacanteNombre,
-          (analisis?.fortalezas as string[]) ?? [],
-          (analisis?.debilidades as string[]) ?? [],
-        ).catch(() => {});
+        this.email.sendSafe(
+          this.email.sendRechazoPostulacion(
+            candidatoEmail, candidatoNombre, vacanteNombre,
+            (analisis?.fortalezas as string[]) ?? [],
+            (analisis?.debilidades as string[]) ?? [],
+          ),
+          'cambio-estado-rechazado',
+        );
         break;
       }
     }

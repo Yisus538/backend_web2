@@ -7,6 +7,7 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser, JwtPayload } from '../common/decorators/current-user.decorator';
+import { ok } from '../common/utils/response.utils';
 
 @Controller('entrevistas')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -18,7 +19,7 @@ export class EntrevistasController {
   @Roles('company')
   async listarEmpresa(@CurrentUser() u: JwtPayload) {
     const data = await this.svc.listarEmpresa(u.userId);
-    return { ok: true, message: 'Entrevistas obtenidas', data };
+    return ok('Entrevistas obtenidas', data);
   }
 
   // GET /api/entrevistas/candidato — candidato
@@ -26,7 +27,7 @@ export class EntrevistasController {
   @Roles('candidate')
   async listarCandidato(@CurrentUser() u: JwtPayload) {
     const data = await this.svc.listarCandidato(u.userId);
-    return { ok: true, message: 'Entrevistas obtenidas', data };
+    return ok('Entrevistas obtenidas', data);
   }
 
   // PATCH /api/entrevistas/:id — empresa confirma/actualiza
@@ -39,6 +40,6 @@ export class EntrevistasController {
     @Body()        body: any,
   ) {
     const data = await this.svc.confirmar(u.userId, id, body);
-    return { ok: true, message: 'Entrevista actualizada', data };
+    return ok('Entrevista actualizada', data);
   }
 }

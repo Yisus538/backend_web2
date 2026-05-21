@@ -289,4 +289,9 @@ export class EmailService implements OnModuleInit {
       `),
     );
   }
+
+  // ─── Fire-and-forget con logging centralizado ─────────────────
+  sendSafe(promise: Promise<void>, label: string): void {
+    promise.catch(err => this.logger.error(`[email/${label}] ${(err as Error).message}`));
+  }
 }

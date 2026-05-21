@@ -19,6 +19,7 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser, JwtPayload } from '../common/decorators/current-user.decorator';
 import { PostulacionCallbackDto } from './dto/postulacion-callback.dto';
+import { ok } from '../common/utils/response.utils';
 
 @Controller('postulaciones')
 export class PostulacionesController {
@@ -39,7 +40,7 @@ export class PostulacionesController {
       throw new UnauthorizedException('Webhook secret inválido');
     }
     const result = await this.svc.procesarCallback(dto);
-    return { ok: true, message: 'Callback procesado', data: result };
+    return ok('Callback procesado', result);
   }
 
   // ────────────────────────────────────────────────────────────
@@ -54,7 +55,7 @@ export class PostulacionesController {
     @Param('vacanteId') vacanteId: string,
   ) {
     const data = await this.svc.listarPorVacante(u.userId, vacanteId);
-    return { ok: true, message: 'Postulantes obtenidos', data };
+    return ok('Postulantes obtenidos', data);
   }
 
   // ────────────────────────────────────────────────────────────
@@ -70,7 +71,7 @@ export class PostulacionesController {
     @Body('estado') estado: string,
   ) {
     const data = await this.svc.cambiarEstadoEmpresa(u.userId, id, estado);
-    return { ok: true, message: 'Estado actualizado', data };
+    return ok('Estado actualizado', data);
   }
 
   // ────────────────────────────────────────────────────────────
@@ -84,7 +85,7 @@ export class PostulacionesController {
     @Query('estado') estado?: string,
   ) {
     const data = await this.svc.listar(u.userId, estado);
-    return { ok: true, message: 'Candidaturas obtenidas', data };
+    return ok('Candidaturas obtenidas', data);
   }
 
   // ────────────────────────────────────────────────────────────
@@ -99,11 +100,7 @@ export class PostulacionesController {
     @Body('ofertaId') ofertaId: string,
   ) {
     const postulacion = await this.svc.crear(u.userId, ofertaId);
-    return {
-      ok:      true,
-      message: 'Postulación creada exitosamente',
-      data:    { postulacion },
-    };
+    return ok('Postulación creada exitosamente', { postulacion });
   }
 
   // ────────────────────────────────────────────────────────────
@@ -118,6 +115,6 @@ export class PostulacionesController {
     @Query('id') id: string,
   ) {
     await this.svc.retirar(u.userId, id);
-    return { ok: true, message: 'Postulación retirada exitosamente' };
+    return ok('Postulación retirada exitosamente');
   }
 }

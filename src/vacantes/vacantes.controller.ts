@@ -9,6 +9,7 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser, JwtPayload } from '../common/decorators/current-user.decorator';
 import { CreateVacanteDto } from './dto/create-vacante.dto';
 import { UpdateVacanteDto } from './dto/update-vacante.dto';
+import { ok } from '../common/utils/response.utils';
 
 @Controller('vacantes')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -30,7 +31,7 @@ export class VacantesController {
     @Query('limit')  limit  = 10,
   ) {
     const data = await this.svc.publicas(u.userId, search, +page, +limit);
-    return { ok: true, message: 'Vacantes obtenidas', data };
+    return ok('Vacantes obtenidas', data);
   }
 
   // ────────────────────────────────────────────────────────────
@@ -40,7 +41,7 @@ export class VacantesController {
   @Roles('candidate')
   async habilidadesDemandadas() {
     const data = await this.svc.habilidadesDemandadas();
-    return { ok: true, message: 'Habilidades demandadas obtenidas', data };
+    return ok('Habilidades demandadas obtenidas', data);
   }
 
   // ────────────────────────────────────────────────────────────
@@ -53,7 +54,7 @@ export class VacantesController {
     @Param('id') id: string,
   ) {
     const data = await this.svc.publicaById(u.userId, id);
-    return { ok: true, message: 'Vacante obtenida', data: { vacante: data } };
+    return ok('Vacante obtenida', { vacante: data });
   }
 
   // ────────────────────────────────────────────────────────────
@@ -66,7 +67,7 @@ export class VacantesController {
     @Query('limit') limit = 6,
   ) {
     const data = await this.svc.recomendadas(u.userId, +limit);
-    return { ok: true, message: 'Vacantes recomendadas', data };
+    return ok('Vacantes recomendadas', data);
   }
 
   // ────────────────────────────────────────────────────────────
@@ -82,19 +83,15 @@ export class VacantesController {
     @Query('limit')  limit  = 10,
   ) {
     const result = await this.svc.listar(u.userId, { estado, search }, { page: +page, limit: +limit });
-    return {
-      ok: true,
-      message: 'Vacantes obtenidas',
-      data: {
-        vacantes:   result.items,
-        pagination: {
-          total:      result.total,
-          page:       result.page,
-          limit:      result.limit,
-          totalPages: result.totalPages,
-        },
+    return ok('Vacantes obtenidas', {
+      vacantes:   result.items,
+      pagination: {
+        total:      result.total,
+        page:       result.page,
+        limit:      result.limit,
+        totalPages: result.totalPages,
       },
-    };
+    });
   }
 
   // ────────────────────────────────────────────────────────────
@@ -108,7 +105,7 @@ export class VacantesController {
     @Body() dto: CreateVacanteDto,
   ) {
     const vacante = await this.svc.crear(u.userId, dto);
-    return { ok: true, message: 'Vacante creada exitosamente', data: { vacante } };
+    return ok('Vacante creada exitosamente', { vacante });
   }
 
   // ────────────────────────────────────────────────────────────
@@ -121,7 +118,7 @@ export class VacantesController {
     @Param('id') id: string,
   ) {
     const vacante = await this.svc.obtener(u.userId, id);
-    return { ok: true, message: 'Vacante obtenida', data: { vacante } };
+    return ok('Vacante obtenida', { vacante });
   }
 
   // ────────────────────────────────────────────────────────────
@@ -137,10 +134,10 @@ export class VacantesController {
     const keys = Object.keys(body ?? {});
     if (keys.length === 1 && keys[0] === 'estado') {
       const vacante = await this.svc.cambiarEstado(u.userId, id, body.estado);
-      return { ok: true, message: 'Estado actualizado', data: { vacante } };
+      return ok('Estado actualizado', { vacante });
     }
     const vacante = await this.svc.actualizar(u.userId, id, body as UpdateVacanteDto);
-    return { ok: true, message: 'Vacante actualizada', data: { vacante } };
+    return ok('Vacante actualizada', { vacante });
   }
 
   // ────────────────────────────────────────────────────────────
@@ -153,6 +150,6 @@ export class VacantesController {
     @Param('id') id: string,
   ) {
     await this.svc.eliminar(u.userId, id);
-    return { ok: true, message: 'Vacante eliminada' };
+    return ok('Vacante eliminada');
   }
 }

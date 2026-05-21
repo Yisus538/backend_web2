@@ -22,6 +22,7 @@ const mockEmail = {
   sendFinalistaNotification:    jest.fn().mockResolvedValue(undefined),
   sendRechazoPostulacion:       jest.fn().mockResolvedValue(undefined),
   sendContratadoNotification:   jest.fn().mockResolvedValue(undefined),
+  sendSafe:                     jest.fn(),
 };
 
 describe('PostulacionesService', () => {

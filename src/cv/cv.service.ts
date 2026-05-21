@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { CvAnalisisDto } from './dto/cv-analisis.dto';
+import { parseJsonArray } from '../common/utils/array.utils';
 
 // Normaliza el string "periodo" de Make al formato interno.
 // Ej: "Ene 2020 - Jun 2022", "2020-03 - Actualidad", "2018 - 2022"
@@ -142,39 +143,11 @@ export class CvService {
     const startMs = Date.now();
     this.logger.log(`[callback] Procesando análisis para candidato ${candidatoId}`);
 
-    // Parsear campos que Make envía como string JSON en lugar de array real.
-    const asArray = (v: any): any[] => {
-      if (Array.isArray(v)) return v;
-      if (typeof v !== 'string' || !v.trim()) return [];
-      const t = v.trim();
-      // Intento 1: ya es JSON array
-      if (t.startsWith('[')) {
-        try { return JSON.parse(t); } catch { /* continuar */ }
-      }
-      // Intento 2: envolver en [] — funciona con "{...}, {...}" de Make
-      if (t.startsWith('{')) {
-        try { return JSON.parse('[' + t + ']'); } catch { /* continuar */ }
-      }
-      // Intento 3: split regex para JSON anidado complejo
-      if (t.startsWith('{')) {
-        try {
-          return t.split(/\}\s*,\s*\{/).map((p) => {
-            let s = p.trim();
-            if (!s.startsWith('{')) s = '{' + s;
-            if (!s.endsWith('}')) s = s + '}';
-            return JSON.parse(s);
-          });
-        } catch { /* continuar */ }
-      }
-      // Intento 4: strings simples separados por coma (tecnologías)
-      return t.split(/[,;]/).map((s: string) => s.trim()).filter(Boolean);
-    };
-
-    const skills      = asArray(payload.skills_detectadas);
-    const tecnologias = asArray(payload.tecnologias_detectadas);
-    const expLaboral  = asArray(payload.experiencia_laboral);
-    const educacion   = asArray(payload.educacion);
-    const idiomas     = asArray(payload.idiomas);
+    const skills      = parseJsonArray(payload.skills_detectadas);
+    const tecnologias = parseJsonArray(payload.tecnologias_detectadas);
+    const expLaboral  = parseJsonArray(payload.experiencia_laboral);
+    const educacion   = parseJsonArray(payload.educacion);
+    const idiomas     = parseJsonArray(payload.idiomas);
 
     this.logger.log(
       `[callback] Arrays recibidos — skills: ${skills.length}, tecno: ${tecnologias.length}, ` +

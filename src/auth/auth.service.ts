@@ -117,10 +117,10 @@ export class AuthService {
       data:  { verificationTokenHash: tokenHash, verificationTokenExpiresAt: expiresAt },
     });
 
-    // Fire-and-forget — no bloquear la respuesta
-    this.email
-      .sendVerificationEmail(user.email, user.fullName, rawToken)
-      .catch((err) => console.error('[register] Error enviando email:', err));
+    this.email.sendSafe(
+      this.email.sendVerificationEmail(user.email, user.fullName, rawToken),
+      'register',
+    );
 
     return this.toPublicUser(user);
   }
@@ -353,9 +353,10 @@ export class AuthService {
       data:  { resetTokenHash: tokenHash, resetTokenExpiresAt: expiresAt },
     });
 
-    this.email
-      .sendPasswordResetEmail(user.email, rawToken)
-      .catch((err) => console.error('[forgotPassword] Error email:', err));
+    this.email.sendSafe(
+      this.email.sendPasswordResetEmail(user.email, rawToken),
+      'forgotPassword',
+    );
   }
 
   // ────────────────────────────────────────────────────────────

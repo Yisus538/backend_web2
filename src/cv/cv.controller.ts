@@ -22,6 +22,8 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser, JwtPayload } from '../common/decorators/current-user.decorator';
 import { CvService } from './cv.service';
 import { CvAnalisisDto } from './dto/cv-analisis.dto';
+import { parseJsonArray } from '../common/utils/array.utils';
+import { ok } from '../common/utils/response.utils';
 
 @Controller('cv')
 export class CvController {
@@ -51,7 +53,7 @@ export class CvController {
     );
     const cvUrl = await this.cvService.uploadCvAndPersist(file, user.userId);
 
-    return { ok: true, message: 'CV recibido, procesando...', data: { cvUrl } };
+    return ok('CV recibido, procesando...', { cvUrl });
   }
 
   // ────────────────────────────────────────────────────────────────
@@ -63,7 +65,7 @@ export class CvController {
   @UseGuards(JwtAuthGuard)
   async getAnalisisActivo(@CurrentUser() user: JwtPayload) {
     const analisis = await this.cvService.getAnalisisActivo(user.userId);
-    return { ok: true, message: 'Análisis obtenido', data: { analisis } };
+    return ok('Análisis obtenido', { analisis });
   }
 
   // ────────────────────────────────────────────────────────────────
@@ -78,7 +80,7 @@ export class CvController {
   ) {
     const id   = candidatoId || user.userId;
     const data = await this.cvService.getAnalisis(id);
-    return { ok: true, data };
+    return ok('Análisis obtenido', data);
   }
 
   // ────────────────────────────────────────────────────────────────
@@ -152,37 +154,13 @@ export class CvController {
     const confianza_datos =
       p.confianza_datos ?? p.confianza ?? p.score ?? p.puntuacion ?? null;
 
-    // ── Arrays: normalizar aunque lleguen como string JSON serializado ──
-    // Make a veces envía arrays como string: "{\"key\":\"val\"}, {\"key\":\"val\"}"
-    const parseJsonArrayString = (v: any): any[] => {
-      if (Array.isArray(v)) return v;
-      if (typeof v !== 'string' || !v.trim()) return [];
-      const trimmed = v.trim();
-      if (trimmed.startsWith('[')) {
-        try { return JSON.parse(trimmed); } catch { /* continuar */ }
-      }
-      if (trimmed.startsWith('{')) {
-        try {
-          const parts = trimmed.split(/\}\s*,\s*\{/);
-          return parts.map((part, i) => {
-            let s = part.trim();
-            if (!s.startsWith('{')) s = '{' + s;
-            if (!s.endsWith('}')) s = s + '}';
-            return JSON.parse(s);
-          });
-        } catch { return []; }
-      }
-      // Strings planos separados por coma/punto y coma (para tecnologias)
-      return trimmed.split(/[,;]/).map((s: string) => s.trim()).filter(Boolean);
-    };
-
-    const tecnologias_detectadas: string[] = parseJsonArrayString(
+    const tecnologias_detectadas: string[] = parseJsonArray(
       p.tecnologias_detectadas ?? p.tecnologias ?? p.technologies ?? null,
     );
-    const skills_detectadas    = parseJsonArrayString(p.skills_detectadas);
-    const experiencia_laboral  = parseJsonArrayString(p.experiencia_laboral);
-    const educacion            = parseJsonArrayString(p.educacion);
-    const idiomas              = parseJsonArrayString(p.idiomas);
+    const skills_detectadas    = parseJsonArray(p.skills_detectadas);
+    const experiencia_laboral  = parseJsonArray(p.experiencia_laboral);
+    const educacion            = parseJsonArray(p.educacion);
+    const idiomas              = parseJsonArray(p.idiomas);
 
     // Log para confirmar qué valores se extrajeron
     this.logger.log(
@@ -210,7 +188,7 @@ export class CvController {
     } as CvAnalisisDto;
 
     await this.cvService.procesarAnalisis(candidatoId, payload);
-    return { ok: true, message: 'Análisis procesado' };
+    return ok('Análisis procesado');
   }
 
   // ────────────────────────────────────────────────────────────────

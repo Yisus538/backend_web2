@@ -16,6 +16,7 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser, JwtPayload } from '../common/decorators/current-user.decorator';
 import { EnviarMensajeDto } from './dto/enviar-mensaje.dto';
 import { CrearConversacionDto } from './dto/crear-conversacion.dto';
+import { ok } from '../common/utils/response.utils';
 
 @Controller('mensajes')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -27,14 +28,14 @@ export class MensajesController {
   @Get('no-leidos')
   async contarNoLeidos(@CurrentUser() u: JwtPayload) {
     const data = await this.svc.contarNoLeidos(u.userId);
-    return { ok: true, message: 'Total no leídos', data };
+    return ok('Total no leídos', data);
   }
 
   // GET /api/mensajes/conversaciones
   @Get('conversaciones')
   async listar(@CurrentUser() u: JwtPayload) {
     const data = await this.svc.listar(u.userId, u.role);
-    return { ok: true, message: 'Conversaciones obtenidas', data };
+    return ok('Conversaciones obtenidas', data);
   }
 
   // POST /api/mensajes/conversaciones
@@ -42,7 +43,7 @@ export class MensajesController {
   @HttpCode(HttpStatus.CREATED)
   async crear(@CurrentUser() u: JwtPayload, @Body() dto: CrearConversacionDto) {
     const data = await this.svc.crearConversacion(u.userId, u.role, dto);
-    return { ok: true, message: 'Conversación lista', data };
+    return ok('Conversación lista', data);
   }
 
   // GET /api/mensajes/conversaciones/:convId
@@ -52,7 +53,7 @@ export class MensajesController {
     @Param('convId') convId: string,
   ) {
     const data = await this.svc.obtenerMensajes(u.userId, convId);
-    return { ok: true, message: 'Mensajes obtenidos', data };
+    return ok('Mensajes obtenidos', data);
   }
 
   // PATCH /api/mensajes/conversaciones/:convId/leer
@@ -63,7 +64,7 @@ export class MensajesController {
     @Param('convId') convId: string,
   ) {
     await this.svc.marcarLeidos(u.userId, convId);
-    return { ok: true, message: 'Mensajes marcados como leídos' };
+    return ok('Mensajes marcados como leídos');
   }
 
   // POST /api/mensajes
@@ -71,6 +72,6 @@ export class MensajesController {
   @HttpCode(HttpStatus.CREATED)
   async enviar(@CurrentUser() u: JwtPayload, @Body() dto: EnviarMensajeDto) {
     const data = await this.svc.enviar(u.userId, dto);
-    return { ok: true, message: 'Mensaje enviado', data };
+    return ok('Mensaje enviado', data);
   }
 }

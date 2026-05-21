@@ -155,7 +155,7 @@ describe('CvController', () => {
       const result = await controller.getAnalisis(undefined as any, mockUser);
 
       expect(cvService.getAnalisis).toHaveBeenCalledWith(mockUser.userId);
-      expect(result).toEqual({ ok: true, data: null });
+      expect(result).toEqual({ ok: true, message: 'Análisis obtenido', data: null });
     });
 
     it('debe usar candidatoId del query param si se provee', async () => {
@@ -172,7 +172,7 @@ describe('CvController', () => {
 
       const result = await controller.getAnalisis(undefined as any, mockUser);
 
-      expect(result).toEqual({ ok: true, data: analisis });
+      expect(result).toEqual({ ok: true, message: 'Análisis obtenido', data: analisis });
     });
   });
 
