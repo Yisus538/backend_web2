@@ -8,6 +8,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { PostulacionCallbackDto } from './dto/postulacion-callback.dto';
+import { sumarDiasHabiles } from '../common/utils/date.utils';
 
 const STATUS_META: Record<string, any> = {
   analizando: { label: 'Analizando',  class: 'blue',   nextStep: 'IA evaluando candidatura', nextStepType: 'pending' },
@@ -253,7 +254,7 @@ export class PostulacionesService {
         data:  { estado: 'entrevista' },
       });
 
-      const fechaTentativa = this.sumarDiasHabiles(new Date(), 3);
+      const fechaTentativa = sumarDiasHabiles(new Date(), 3);
       await this.prisma.entrevista.create({
         data: {
           postulacionId,
@@ -337,7 +338,7 @@ export class PostulacionesService {
         where: { postulacionId },
       });
       if (!existeEntrevista) {
-        const fechaTentativa = this.sumarDiasHabiles(new Date(), 3);
+        const fechaTentativa = sumarDiasHabiles(new Date(), 3);
         await this.prisma.entrevista.create({
           data: {
             postulacionId,
@@ -521,16 +522,4 @@ export class PostulacionesService {
     }
   }
 
-  private sumarDiasHabiles(fecha: Date, dias: number): Date {
-    const resultado = new Date(fecha);
-    let agregados = 0;
-    while (agregados < dias) {
-      resultado.setDate(resultado.getDate() + 1);
-      const diaSemana = resultado.getDay();
-      if (diaSemana !== 0 && diaSemana !== 6) {
-        agregados++;
-      }
-    }
-    return resultado;
-  }
 }
