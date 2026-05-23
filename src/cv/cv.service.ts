@@ -371,12 +371,16 @@ export class CvService {
     analisisOrigenId: string | null = null,
   ): Promise<{ created: boolean }> {
     try {
+      const existing = await this.prisma.candidatoHabilidad.findUnique({
+        where:  { candidatoId_habilidadId: { candidatoId, habilidadId } },
+        select: { candidatoId: true },
+      });
       await this.prisma.candidatoHabilidad.upsert({
         where:  { candidatoId_habilidadId: { candidatoId, habilidadId } },
         create: { candidatoId, habilidadId, nivel, tipo, analisisOrigenId },
         update: { tipo },
       });
-      return { created: true };
+      return { created: !existing };
     } catch (err) {
       this.logger.error(`[upsert] habilidadId=${habilidadId}: ${(err as Error).message}`);
       return { created: false };

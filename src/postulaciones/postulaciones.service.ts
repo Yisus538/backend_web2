@@ -256,21 +256,12 @@ export class PostulacionesService {
         data:  { estado: 'entrevista' },
       });
 
-      const fechaTentativa = sumarDiasHabiles(new Date(), 3);
-      await this.prisma.entrevista.create({
-        data: {
-          postulacionId,
-          fecha:  fechaTentativa,
-          estado: 'pendiente',
-          tipo:   'pendiente',
-          notas:  `Auto-agendada por análisis IA. Score: ${matchScore}%. ${recomendacion ?? ''}`,
-        },
-      });
+      await this.ensureEntrevista(postulacionId, `Auto-agendada por análisis IA. Score: ${matchScore}%. ${recomendacion ?? ''}`);
 
       this.email.sendSafe(
         this.email.sendEntrevistaAgendada(
           candidatoEmail, candidatoNombre, vacanteNombre, empresaNombre,
-          matchScore, fechaTentativa,
+          matchScore, null,
         ),
         'entrevista-candidato',
       );
@@ -345,20 +336,7 @@ export class PostulacionesService {
     });
 
     if (estadoReal === 'entrevista') {
-      const existeEntrevista = await this.prisma.entrevista.findUnique({
-        where: { postulacionId },
-      });
-      if (!existeEntrevista) {
-        const fechaTentativa = sumarDiasHabiles(new Date(), 3);
-        await this.prisma.entrevista.create({
-          data: {
-            postulacionId,
-            fecha:  fechaTentativa,
-            estado: 'pendiente',
-            tipo:   'pendiente',
-          },
-        });
-      }
+      await this.ensureEntrevista(postulacionId);
     }
 
     const candidatoEmail  = postulacion.candidato.usuario.email;
@@ -476,6 +454,22 @@ export class PostulacionesService {
   // ────────────────────────────────────────────────────────────
   // Privados
   // ────────────────────────────────────────────────────────────
+  private async ensureEntrevista(postulacionId: string, notas?: string): Promise<void> {
+    const existe = await this.prisma.entrevista.findUnique({ where: { postulacionId } });
+    if (!existe) {
+      const fechaTentativa = sumarDiasHabiles(new Date(), 3);
+      await this.prisma.entrevista.create({
+        data: {
+          postulacionId,
+          fecha:  fechaTentativa,
+          estado: 'pendiente',
+          tipo:   'pendiente',
+          ...(notas ? { notas } : {}),
+        },
+      });
+    }
+  }
+
   private async enviarAMake(
     postulacionId: string,
     candidatoId: string,

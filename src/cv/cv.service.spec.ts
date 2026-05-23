@@ -19,6 +19,7 @@ describe('CvService', () => {
       upsert: jest.fn(),
     },
     candidatoHabilidad: {
+      findUnique: jest.fn(),
       upsert: jest.fn(),
     },
     experienciaLaboral: {
@@ -227,6 +228,7 @@ describe('CvService', () => {
         skills_detectadas: [{ skill: 'React', nivel_estimado: 'avanzado', confianza: '90' }],
       };
       mockPrisma.habilidad.upsert.mockResolvedValue({ id: 'hab-1', nombre: 'React' });
+      mockPrisma.candidatoHabilidad.findUnique.mockResolvedValue(null);
       mockPrisma.candidatoHabilidad.upsert.mockResolvedValue({});
 
       await service.procesarAnalisis(candidatoId, payload);
@@ -244,6 +246,7 @@ describe('CvService', () => {
     it('debe procesar tecnologias con tipo="tecnologia"', async () => {
       const payload = { ...basePayload, tecnologias_detectadas: ['Node.js'] };
       mockPrisma.habilidad.upsert.mockResolvedValue({ id: 'hab-node', nombre: 'Node.js' });
+      mockPrisma.candidatoHabilidad.findUnique.mockResolvedValue(null);
       mockPrisma.candidatoHabilidad.upsert.mockResolvedValue({});
 
       await service.procesarAnalisis(candidatoId, payload);
@@ -361,6 +364,7 @@ describe('CvService', () => {
       mockPrisma.habilidad.upsert
         .mockRejectedValueOnce(new Error('DB error'))
         .mockResolvedValueOnce({ id: 'hab-vue', nombre: 'Vue' });
+      mockPrisma.candidatoHabilidad.findUnique.mockResolvedValue(null);
       mockPrisma.candidatoHabilidad.upsert.mockResolvedValue({});
 
       await expect(service.procesarAnalisis(candidatoId, payload)).resolves.not.toThrow();
@@ -373,6 +377,7 @@ describe('CvService', () => {
         skills_detectadas: JSON.stringify([{ skill: 'Python', nivel_estimado: 'intermedio', confianza: '80' }]) as any,
       };
       mockPrisma.habilidad.upsert.mockResolvedValue({ id: 'hab-py', nombre: 'Python' });
+      mockPrisma.candidatoHabilidad.findUnique.mockResolvedValue(null);
       mockPrisma.candidatoHabilidad.upsert.mockResolvedValue({});
 
       await service.procesarAnalisis(candidatoId, payload);

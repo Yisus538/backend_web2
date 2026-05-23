@@ -150,17 +150,16 @@ export class AuthService {
 
     if (!isValid) {
       const attempts = user.failedLoginAttempts + 1;
+      const lockUntil = attempts >= MAX_FAILED ? new Date(Date.now() + LOCK_MINUTES * 60_000) : undefined;
       await this.prisma.user.update({
         where: { id: user.id },
-        data:  { failedLoginAttempts: attempts },
+        data: {
+          failedLoginAttempts: attempts,
+          ...(lockUntil ? { lockedUntil: lockUntil } : {}),
+        },
       });
 
       if (attempts >= MAX_FAILED) {
-        const lockUntil = new Date(Date.now() + LOCK_MINUTES * 60_000);
-        await this.prisma.user.update({
-          where: { id: user.id },
-          data:  { lockedUntil: lockUntil },
-        });
         throw new HttpException(
           { ok: false, message: `Cuenta bloqueada. Intentá en ${LOCK_MINUTES} minuto(s).` },
           423,
@@ -171,11 +170,12 @@ export class AuthService {
       throw new UnauthorizedException(`Credenciales inválidas (${remaining} intentos restantes)`);
     }
 
-    // Credenciales correctas → resetear contador
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data:  { failedLoginAttempts: 0, lockedUntil: null },
-    });
+    if (user.failedLoginAttempts !== 0 || user.lockedUntil !== null) {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data:  { failedLoginAttempts: 0, lockedUntil: null },
+      });
+    }
 
     if (!user.isEmailVerified) {
       throw new HttpException(
