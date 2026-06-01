@@ -26,7 +26,8 @@ describe('CvController', () => {
 
   beforeEach(async () => {
     process.env.WEBHOOK_SECRET = 'reclutaia-make-2024';
-    process.env.MAKE_CV_WEBHOOK_URL = 'https://mock-make.com/webhook';
+    process.env.MAKE_CV_WEBHOOK_URL = 'https://hook.make.com/mock-webhook';
+    process.env.MAKE_API_KEY = 'test-api-key';
 
     const mockCvService = {
       getAnalisis: jest.fn(),
@@ -52,6 +53,7 @@ describe('CvController', () => {
   afterEach(() => {
     jest.clearAllMocks();
     delete process.env.MAKE_CV_WEBHOOK_URL;
+    delete process.env.MAKE_API_KEY;
   });
 
   // ══════════════════════════════════════════════════════
