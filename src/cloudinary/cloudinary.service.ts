@@ -1,12 +1,11 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { UploadApiResponse, v2 as CloudinaryType } from 'cloudinary';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 import sharp = require('sharp');
 
 @Injectable()
 export class CloudinaryService {
-  constructor(
-    @Inject('CLOUDINARY') private readonly cloudinary: typeof CloudinaryType,
-  ) {}
+  constructor(@Inject('CLOUDINARY') private readonly cloudinary: typeof CloudinaryType) {}
 
   async uploadCv(
     buffer: Buffer,
@@ -14,19 +13,17 @@ export class CloudinaryService {
     originalName: string,
   ): Promise<{ secureUrl: string; publicId: string }> {
     return new Promise((resolve, reject) => {
-      const sanitizedName = originalName
-        .replace(/\.[^/.]+$/, '')
-        .replace(/[^a-zA-Z0-9_-]/g, '_');
+      const sanitizedName = originalName.replace(/\.[^/.]+$/, '').replace(/[^a-zA-Z0-9_-]/g, '_');
       const publicId = `cv-${userId}-${sanitizedName}`;
 
       this.cloudinary.uploader
         .upload_stream(
           {
-            folder:        'cvs',
-            public_id:     publicId,
+            folder: 'cvs',
+            public_id: publicId,
             resource_type: 'raw',
-            format:        'pdf',
-            overwrite:     true,
+            format: 'pdf',
+            overwrite: true,
           },
           (error, result) => {
             if (error || !result) return reject(error ?? new Error('Cloudinary upload failed'));
