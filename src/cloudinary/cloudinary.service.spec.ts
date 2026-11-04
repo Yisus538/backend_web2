@@ -3,8 +3,8 @@ import { CloudinaryService } from './cloudinary.service';
 
 jest.mock('sharp', () => {
   const chain = {
-    resize:   jest.fn().mockReturnThis(),
-    webp:     jest.fn().mockReturnThis(),
+    resize: jest.fn().mockReturnThis(),
+    webp: jest.fn().mockReturnThis(),
     toBuffer: jest.fn().mockResolvedValue(Buffer.from('fake-webp')),
   };
   return jest.fn(() => chain);
@@ -20,10 +20,7 @@ describe('CloudinaryService', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        CloudinaryService,
-        { provide: 'CLOUDINARY', useValue: mockCloudinary },
-      ],
+      providers: [CloudinaryService, { provide: 'CLOUDINARY', useValue: mockCloudinary }],
     }).compile();
     service = module.get<CloudinaryService>(CloudinaryService);
   });
@@ -42,6 +39,7 @@ describe('CloudinaryService', () => {
 
     await service.uploadAvatar(Buffer.from('img'), 'user-123');
 
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const sharp = require('sharp');
     expect(sharp).toHaveBeenCalledWith(expect.any(Buffer));
     expect(sharp().resize).toHaveBeenCalledWith(500, 500, { fit: 'cover' });
@@ -78,7 +76,8 @@ describe('CloudinaryService', () => {
       return { end: jest.fn() };
     });
 
-    await expect(service.uploadAvatar(Buffer.from('img'), 'user-1'))
-      .rejects.toThrow('Cloudinary down');
+    await expect(service.uploadAvatar(Buffer.from('img'), 'user-1')).rejects.toThrow(
+      'Cloudinary down',
+    );
   });
 });

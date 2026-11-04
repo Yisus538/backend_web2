@@ -6,7 +6,9 @@ import { JwtPayload } from '../common/decorators/current-user.decorator';
 
 describe('CvController', () => {
   let controller: CvController;
-  let cvService: jest.Mocked<Pick<CvService, 'getAnalisis' | 'procesarAnalisis' | 'uploadCvAndPersist'>>;
+  let cvService: jest.Mocked<
+    Pick<CvService, 'getAnalisis' | 'procesarAnalisis' | 'uploadCvAndPersist'>
+  >;
   let fetchSpy: jest.SpyInstance;
 
   const mockUser: JwtPayload = {
@@ -24,18 +26,18 @@ describe('CvController', () => {
 
   beforeEach(async () => {
     process.env.WEBHOOK_SECRET = 'reclutaia-make-2024';
+    process.env.MAKE_CV_WEBHOOK_URL = 'https://hook.make.com/mock-webhook';
+    process.env.MAKE_API_KEY = 'test-api-key';
 
     const mockCvService = {
-      getAnalisis:       jest.fn(),
-      procesarAnalisis:  jest.fn().mockResolvedValue(undefined),
+      getAnalisis: jest.fn(),
+      procesarAnalisis: jest.fn().mockResolvedValue(undefined),
       uploadCvAndPersist: jest.fn().mockResolvedValue(null),
     };
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [CvController],
-      providers: [
-        { provide: CvService, useValue: mockCvService },
-      ],
+      providers: [{ provide: CvService, useValue: mockCvService }],
     }).compile();
 
     controller = module.get<CvController>(CvController);
@@ -48,7 +50,11 @@ describe('CvController', () => {
     } as Response);
   });
 
-  afterEach(() => jest.clearAllMocks());
+  afterEach(() => {
+    jest.clearAllMocks();
+    delete process.env.MAKE_CV_WEBHOOK_URL;
+    delete process.env.MAKE_API_KEY;
+  });
 
   // ══════════════════════════════════════════════════════
   // POST /cv/analyze
@@ -62,9 +68,7 @@ describe('CvController', () => {
     });
 
     it('debe llamar sendToMake en fire-and-forget con el archivo y userId', async () => {
-      const sendSpy = jest
-        .spyOn(controller as any, 'sendToMake')
-        .mockResolvedValue(undefined);
+      const sendSpy = jest.spyOn(controller as any, 'sendToMake').mockResolvedValue(undefined);
 
       await controller.analyze(mockFile, mockUser);
 
@@ -73,16 +77,16 @@ describe('CvController', () => {
     });
 
     it('debe lanzar BadRequestException si no se recibe archivo', async () => {
-      await expect(
-        controller.analyze(undefined as any, mockUser),
-      ).rejects.toThrow(BadRequestException);
+      await expect(controller.analyze(undefined as any, mockUser)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('no debe rechazar aunque sendToMake falle (fire-and-forget)', async () => {
       fetchSpy.mockRejectedValue(new Error('Make.com no disponible'));
 
       const result = await controller.analyze(mockFile, mockUser);
-      await new Promise(r => setTimeout(r, 10));
+      await new Promise((r) => setTimeout(r, 10));
 
       expect(result.ok).toBe(true);
     });
@@ -130,17 +134,15 @@ describe('CvController', () => {
         text: async () => 'Internal Server Error',
       } as Response);
 
-      await expect(
-        (controller as any).sendToMake(mockFile, 'uuid-test'),
-      ).resolves.toBeUndefined();
+      await expect((controller as any).sendToMake(mockFile, 'uuid-test')).resolves.toBeUndefined();
     });
 
     it('debe lanzar si fetch falla por error de red', async () => {
       fetchSpy.mockRejectedValue(new Error('Network Error'));
 
-      await expect(
-        (controller as any).sendToMake(mockFile, 'uuid-test'),
-      ).rejects.toThrow('Network Error');
+      await expect((controller as any).sendToMake(mockFile, 'uuid-test')).rejects.toThrow(
+        'Network Error',
+      );
     });
   });
 
@@ -197,17 +199,13 @@ describe('CvController', () => {
     });
 
     it('debe lanzar BadRequestException si no hay candidatoId en payload ni query', async () => {
-      await expect(
-        controller.callback(VALID_SECRET, undefined as any, {}),
-      ).rejects.toThrow(BadRequestException);
+      await expect(controller.callback(VALID_SECRET, undefined as any, {})).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('debe procesar el análisis y retornar ok:true con candidatoId en body', async () => {
-      const result = await controller.callback(
-        VALID_SECRET,
-        undefined as any,
-        basePayload,
-      );
+      const result = await controller.callback(VALID_SECRET, undefined as any, basePayload);
 
       expect(cvService.procesarAnalisis).toHaveBeenCalledWith(
         'uuid-candidato-123',
@@ -217,11 +215,7 @@ describe('CvController', () => {
     });
 
     it('debe aceptar candidatoId desde query param si el body no lo tiene', async () => {
-      const result = await controller.callback(
-        VALID_SECRET,
-        'uuid-desde-query',
-        {},
-      );
+      const result = await controller.callback(VALID_SECRET, 'uuid-desde-query', {});
 
       expect(cvService.procesarAnalisis).toHaveBeenCalledWith(
         'uuid-desde-query',
@@ -303,18 +297,14 @@ describe('CvController', () => {
     });
 
     it('debe aceptar candidatoId en variantes de nombre (CandidatoId, candidato_id)', async () => {
-      const result1 = await controller.callback(
-        VALID_SECRET,
-        undefined as any,
-        { CandidatoId: 'uuid-variant-1' },
-      );
+      const result1 = await controller.callback(VALID_SECRET, undefined as any, {
+        CandidatoId: 'uuid-variant-1',
+      });
       expect(result1).toEqual({ ok: true, message: 'Análisis procesado' });
 
-      const result2 = await controller.callback(
-        VALID_SECRET,
-        undefined as any,
-        { candidato_id: 'uuid-variant-2' },
-      );
+      const result2 = await controller.callback(VALID_SECRET, undefined as any, {
+        candidato_id: 'uuid-variant-2',
+      });
       expect(result2).toEqual({ ok: true, message: 'Análisis procesado' });
     });
   });

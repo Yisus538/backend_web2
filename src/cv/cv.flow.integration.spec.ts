@@ -29,19 +29,21 @@ describe('CV Flow — Integración', () => {
     }) as Express.Multer.File;
 
   beforeEach(async () => {
+    process.env.MAKE_CV_WEBHOOK_URL = 'https://hook.make.com/mock-webhook';
+
     const module: TestingModule = await Test.createTestingModule({
       controllers: [CvController],
       providers: [
         {
           provide: CvService,
           useValue: {
-            getAnalisis:        jest.fn().mockResolvedValue(null),
-            procesarAnalisis:   jest.fn().mockResolvedValue(undefined),
+            getAnalisis: jest.fn().mockResolvedValue(null),
+            procesarAnalisis: jest.fn().mockResolvedValue(undefined),
             uploadCvAndPersist: jest.fn().mockResolvedValue(null),
           },
         },
         { provide: CloudinaryService, useValue: { uploadFile: jest.fn() } },
-        { provide: PrismaService,     useValue: {} },
+        { provide: PrismaService, useValue: {} },
       ],
     }).compile();
 
@@ -54,11 +56,14 @@ describe('CV Flow — Integración', () => {
     } as Response);
   });
 
-  afterEach(() => jest.clearAllMocks());
+  afterEach(() => {
+    jest.clearAllMocks();
+    delete process.env.MAKE_CV_WEBHOOK_URL;
+  });
 
   it('primer CV: Make recibe candidatoId correcto y el archivo', async () => {
     await controller.analyze(makeFile('cv-v1.pdf'), candidato1);
-    await new Promise(r => setTimeout(r, 10));
+    await new Promise((r) => setTimeout(r, 10));
 
     expect(fetchSpy).toHaveBeenCalledTimes(1);
 
@@ -72,10 +77,10 @@ describe('CV Flow — Integración', () => {
 
   it('segundo CV del mismo candidato: Make recibe el MISMO candidatoId (permite UPSERT)', async () => {
     await controller.analyze(makeFile('cv-v1.pdf'), candidato1);
-    await new Promise(r => setTimeout(r, 10));
+    await new Promise((r) => setTimeout(r, 10));
 
     await controller.analyze(makeFile('cv-v2.pdf'), candidato1);
-    await new Promise(r => setTimeout(r, 10));
+    await new Promise((r) => setTimeout(r, 10));
 
     expect(fetchSpy).toHaveBeenCalledTimes(2);
 
@@ -95,7 +100,7 @@ describe('CV Flow — Integración', () => {
 
     await controller.analyze(makeFile('cv-juan.pdf'), candidato1);
     await controller.analyze(makeFile('cv-ana.pdf'), candidato2);
-    await new Promise(r => setTimeout(r, 10));
+    await new Promise((r) => setTimeout(r, 10));
 
     expect(fetchSpy).toHaveBeenCalledTimes(2);
 
@@ -108,7 +113,7 @@ describe('CV Flow — Integración', () => {
 
   it('la URL enviada a Make incluye candidatoId como query param', async () => {
     await controller.analyze(makeFile('cv-test.pdf'), candidato1);
-    await new Promise(r => setTimeout(r, 10));
+    await new Promise((r) => setTimeout(r, 10));
 
     const [url] = fetchSpy.mock.calls[0];
     expect(url).toContain(`candidatoId=${encodeURIComponent(candidato1.userId)}`);

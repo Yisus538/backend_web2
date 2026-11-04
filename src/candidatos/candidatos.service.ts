@@ -1,10 +1,6 @@
-import {
-  Injectable,
-  NotFoundException,
-  ForbiddenException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { calcMatchScore, calcMatchScoreDetailed } from '../common/utils/match-score.utils';
+import { calcMatchScoreDetailed } from '../common/utils/match-score.utils';
 
 @Injectable()
 export class CandidatosService {
@@ -17,28 +13,28 @@ export class CandidatosService {
     const user = await this.prisma.user.findFirst({
       where: { id: candidatoId, role: 'candidate', isActive: true },
       select: {
-        id:        true,
-        fullName:  true,
-        email:     true,
+        id: true,
+        fullName: true,
+        email: true,
         avatarUrl: true,
-        titulo:    true,
+        titulo: true,
         ubicacion: true,
         candidato: {
           select: {
             biografia: true,
             habilidades: {
               select: {
-                nivel:    true,
+                nivel: true,
                 aniosExp: true,
                 habilidad: { select: { nombre: true } },
               },
               orderBy: { aniosExp: 'desc' },
             },
-            idiomas:    { orderBy: { creadaEl: 'asc' } },
+            idiomas: { orderBy: { creadaEl: 'asc' } },
             experiencia: { orderBy: { fechaInicio: 'desc' } },
-            educacion:   { orderBy: { fechaInicio: 'desc' } },
+            educacion: { orderBy: { fechaInicio: 'desc' } },
             analisisDirectos: {
-              select:  { resumen: true, score: true, analizadoEl: true },
+              select: { resumen: true, score: true, analizadoEl: true },
               orderBy: { analizadoEl: 'desc' },
               take: 1,
             },
@@ -65,22 +61,22 @@ export class CandidatosService {
     const ultimoAnalisis = user.candidato?.analisisDirectos?.[0] ?? null;
 
     return {
-      id:         user.id,
-      name:       user.fullName,
-      email:      user.email,
-      avatar:     user.avatarUrl ?? null,
-      role:       user.titulo ?? 'Candidato',
-      location:   user.ubicacion ?? '',
-      biografia:  user.candidato?.biografia ?? null,
+      id: user.id,
+      name: user.fullName,
+      email: user.email,
+      avatar: user.avatarUrl ?? null,
+      role: user.titulo ?? 'Candidato',
+      location: user.ubicacion ?? '',
+      biografia: user.candidato?.biografia ?? null,
       resumen_ia: ultimoAnalisis?.resumen ?? null,
-      score_ia:   ultimoAnalisis?.score   ?? null,
+      score_ia: ultimoAnalisis?.score ?? null,
       experience: totalExp > 0 ? `${totalExp} años` : 'Sin experiencia registrada',
-      skills:     skillNames,
-      idiomas:    user.candidato?.idiomas   ?? [],
-      educacion:  user.candidato?.educacion ?? [],
+      skills: skillNames,
+      idiomas: user.candidato?.idiomas ?? [],
+      educacion: user.candidato?.educacion ?? [],
       experiencia: user.candidato?.experiencia ?? [],
-      cvUrl:         postulacion?.urlCv ?? null,
-      postulacionId: postulacion?.id    ?? null,
+      cvUrl: postulacion?.urlCv ?? null,
+      postulacionId: postulacion?.id ?? null,
     };
   }
 
@@ -88,24 +84,28 @@ export class CandidatosService {
   // GET /api/candidatos  — empresas ven candidatos
   // ────────────────────────────────────────────────────────────
   async listar(userId: string, q: any) {
-    const search      = (q.search      ?? '') as string;
-    const vacanteId   = (q.vacanteId   ?? null) as string | null;
-    const ubicacion   = (q.ubicacion   ?? '') as string;
+    const search = (q.search ?? '') as string;
+    const vacanteId = (q.vacanteId ?? null) as string | null;
+    const ubicacion = (q.ubicacion ?? '') as string;
     const aniosExpMin = q.aniosExpMin ? parseInt(q.aniosExpMin, 10) : null;
-    const page        = Math.max(1, parseInt(q.page  ?? '1',  10));
-    const limit       = Math.min(50, Math.max(1, parseInt(q.limit ?? '20', 10)));
-    const skip        = (page - 1) * limit;
+    const page = Math.max(1, parseInt(q.page ?? '1', 10));
+    const limit = Math.min(50, Math.max(1, parseInt(q.limit ?? '20', 10)));
+    const skip = (page - 1) * limit;
 
     // Solo candidatos con perfil completo
     const where: any = {
-      role:     'candidate',
+      role: 'candidate',
       isActive: true,
       AND: [
-        { fullName:  { not: '' } },
-        { telefono:  { not: null } }, { telefono:  { not: '' } },
-        { ubicacion: { not: null } }, { ubicacion: { not: '' } },
-        { titulo:    { not: null } }, { titulo:    { not: '' } },
-        { avatarUrl: { not: null } }, { avatarUrl: { not: '' } },
+        { fullName: { not: '' } },
+        { telefono: { not: null } },
+        { telefono: { not: '' } },
+        { ubicacion: { not: null } },
+        { ubicacion: { not: '' } },
+        { titulo: { not: null } },
+        { titulo: { not: '' } },
+        { avatarUrl: { not: null } },
+        { avatarUrl: { not: '' } },
       ],
     };
 
@@ -113,8 +113,8 @@ export class CandidatosService {
       where.AND.push({
         OR: [
           { fullName: { contains: search, mode: 'insensitive' } },
-          { titulo:   { contains: search, mode: 'insensitive' } },
-          { email:    { contains: search, mode: 'insensitive' } },
+          { titulo: { contains: search, mode: 'insensitive' } },
+          { email: { contains: search, mode: 'insensitive' } },
         ],
       });
     }
@@ -134,18 +134,18 @@ export class CandidatosService {
     }
 
     // Vacante seleccionada → match score + marcar postulados
-    let vacante: any      = null;
-    let postulacionesSet  = new Set<string>();
-    let postulacionIdMap  = new Map<string, string>();
+    let vacante: any = null;
+    let postulacionesSet = new Set<string>();
+    let postulacionIdMap = new Map<string, string>();
 
     if (vacanteId) {
       vacante = await this.prisma.ofertaLaboral.findFirst({
-        where:  { id: vacanteId, empresaId: userId },
+        where: { id: vacanteId, empresaId: userId },
         select: { id: true, requisitos: true, experienciaMinima: true },
       });
       if (vacante) {
         const posts = await this.prisma.postulacion.findMany({
-          where:  { ofertaId: vacanteId },
+          where: { ofertaId: vacanteId },
           select: { id: true, candidatoId: true },
         });
         postulacionesSet = new Set(posts.map((p) => p.candidatoId));
@@ -157,22 +157,22 @@ export class CandidatosService {
       this.prisma.user.findMany({
         where,
         skip,
-        take:    limit,
+        take: limit,
         orderBy: { createdAt: 'desc' },
         select: {
-          id:        true,
-          fullName:  true,
-          email:     true,
+          id: true,
+          fullName: true,
+          email: true,
           avatarUrl: true,
-          titulo:    true,
+          titulo: true,
           ubicacion: true,
           createdAt: true,
           candidato: {
             select: {
               habilidades: {
                 select: {
-                  nivel:     true,
-                  aniosExp:  true,
+                  nivel: true,
+                  aniosExp: true,
                   habilidad: { select: { nombre: true } },
                 },
                 orderBy: { aniosExp: 'desc' },
@@ -185,40 +185,50 @@ export class CandidatosService {
     ]);
 
     const candidatos = rows.map((u) => {
-      const skills     = u.candidato?.habilidades ?? [];
+      const skills = u.candidato?.habilidades ?? [];
       const skillNames = skills.map((h) => h.habilidad.nombre);
-      const topSkills  = skillNames.slice(0, 4);
+      const topSkills = skillNames.slice(0, 4);
       const techInitials = topSkills.map((s) =>
         s.length <= 3
           ? s.toUpperCase()
-          : s.split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 2),
+          : s
+              .split(' ')
+              .map((w) => w[0])
+              .join('')
+              .toUpperCase()
+              .slice(0, 2),
       );
       const totalExp = skills.reduce((max, h) => Math.max(max, h.aniosExp ?? 0), 0);
       const scoreDetalle = vacante
-        ? calcMatchScoreDetailed(skillNames, totalExp, vacante.requisitos, vacante.experienciaMinima ?? 0)
+        ? calcMatchScoreDetailed(
+            skillNames,
+            totalExp,
+            vacante.requisitos,
+            vacante.experienciaMinima ?? 0,
+          )
         : null;
-      const score        = scoreDetalle?.total ?? null;
+      const score = scoreDetalle?.total ?? null;
       const scoreDesglose = scoreDetalle
         ? { habilidades: scoreDetalle.skillsScore, experiencia: scoreDetalle.expScore }
         : null;
-      const postulado     = vacante ? postulacionesSet.has(u.id) : false;
+      const postulado = vacante ? postulacionesSet.has(u.id) : false;
       const postulacionId = vacante ? (postulacionIdMap.get(u.id) ?? null) : null;
 
       return {
-        id:            u.id,
-        name:          u.fullName,
-        role:          u.titulo ?? 'Candidato',
-        avatar:        u.avatarUrl ?? null,
-        available:     true,
-        skills:        topSkills,
-        location:      u.ubicacion ?? 'Sin ubicación',
-        experience:    totalExp > 0 ? `${totalExp} años de experiencia` : 'Sin experiencia registrada',
+        id: u.id,
+        name: u.fullName,
+        role: u.titulo ?? 'Candidato',
+        avatar: u.avatarUrl ?? null,
+        available: true,
+        skills: topSkills,
+        location: u.ubicacion ?? 'Sin ubicación',
+        experience: totalExp > 0 ? `${totalExp} años de experiencia` : 'Sin experiencia registrada',
         techInitials,
         score,
         scoreDesglose,
         postulado,
         postulacionId,
-        createdAt:     u.createdAt,
+        createdAt: u.createdAt,
       };
     });
 
@@ -242,20 +252,20 @@ export class CandidatosService {
   // ────────────────────────────────────────────────────────────
   async getHabilidades(userId: string) {
     const habilidades = await this.prisma.candidatoHabilidad.findMany({
-      where:   { candidatoId: userId },
+      where: { candidatoId: userId },
       select: {
-        nivel:      true,
-        aniosExp:   true,
+        nivel: true,
+        aniosExp: true,
         verificada: true,
-        habilidad:  { select: { id: true, nombre: true } },
+        habilidad: { select: { id: true, nombre: true } },
       },
       orderBy: { aniosExp: 'desc' },
     });
     const skills = habilidades.map((h) => ({
-      id:         h.habilidad.id,
-      nombre:     h.habilidad.nombre,
-      nivel:      h.nivel,
-      aniosExp:   h.aniosExp,
+      id: h.habilidad.id,
+      nombre: h.habilidad.nombre,
+      nivel: h.nivel,
+      aniosExp: h.aniosExp,
       verificada: h.verificada,
     }));
     return { skills };
